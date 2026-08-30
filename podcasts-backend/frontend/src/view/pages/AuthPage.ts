@@ -1,175 +1,225 @@
-import { AuthService } from '../../services/authService';
-import type { Router } from '../../router/Router';
+import { authService } from '../../services/authService';
 
-type AuthMode =
-  | 'login'
-  | 'register';
+type AuthMode = 'login' | 'register';
 
 export class AuthPage {
-  private readonly root: HTMLElement;
-  private readonly router: Router;
-  private readonly mode: AuthMode;
+  private root: HTMLElement;
+  private mode: AuthMode = 'login';
 
-  private readonly authService: AuthService;
-
-  public constructor(
-    root: HTMLElement,
-    router: Router,
-    mode: AuthMode = 'login',
-  ) {
+  constructor(root: HTMLElement) {
     this.root = root;
-    this.router = router;
-    this.mode = mode;
-
-    this.authService =
-      new AuthService();
   }
 
-  public render(): void {
-    const page =
-      document.createElement('main');
+  async render(
+    mode: AuthMode = 'login',
+  ): Promise<void> {
+    this.mode = mode;
 
-    page.className =
-      'auth-page';
+    this.renderPage();
+    this.bindEvents();
+  }
 
-    page.innerHTML = `
-      <section class="auth">
-        <div class="auth__logo">
-          <div class="auth__logo-mark">
-            ♪
+  private renderPage(): void {
+    const isLogin =
+      this.mode === 'login';
+
+    this.root.innerHTML = `
+      <main class="auth-page">
+
+        <section class="auth-card">
+
+          <div class="auth-logo">
+
+            <span class="auth-logo__icon">
+              ♪
+            </span>
+
+            <span>
+              AudioPlayer
+            </span>
+
           </div>
 
-          <span>
-            Audio
-          </span>
-        </div>
+          <div class="auth-header">
 
-        <div class="auth__content">
-          <p class="auth__subtitle">
-            ${
-              this.mode === 'login'
-                ? 'Добро пожаловать'
-                : 'Создайте аккаунт'
-            }
-          </p>
+            <h1>
+              ${
+                isLogin
+                  ? 'С возвращением!'
+                  : 'Создать аккаунт'
+              }
+            </h1>
 
-          <h1 class="auth__title">
-            ${
-              this.mode === 'login'
-                ? 'Войти'
-                : 'Регистрация'
-            }
-          </h1>
+            <p>
+              ${
+                isLogin
+                  ? 'Войдите, чтобы продолжить слушать музыку'
+                  : 'Зарегистрируйтесь и создайте свою коллекцию'
+              }
+            </p>
+
+          </div>
 
           <form
+            id="auth-form"
             class="auth-form"
-            data-auth-form
+            novalidate
           >
-            <label class="auth-form__label">
-              Имя пользователя
-
-              <input
-                class="auth-form__input"
-                type="text"
-                name="username"
-                placeholder="Введите имя"
-                autocomplete="username"
-                minlength="3"
-                required
-              />
-            </label>
-
-            <label class="auth-form__label">
-              Пароль
-
-              <input
-                class="auth-form__input"
-                type="password"
-                name="password"
-                placeholder="Введите пароль"
-                autocomplete="${
-                  this.mode === 'login'
-                    ? 'current-password'
-                    : 'new-password'
-                }"
-                minlength="4"
-                required
-              />
-            </label>
 
             ${
-              this.mode === 'register'
+              !isLogin
                 ? `
-                  <label class="auth-form__label">
-                    Повторите пароль
+                  <div class="form-group">
+
+                    <label for="auth-name">
+                      Имя
+                    </label>
 
                     <input
-                      class="auth-form__input"
-                      type="password"
-                      name="confirmPassword"
-                      placeholder="Повторите пароль"
-                      autocomplete="new-password"
-                      minlength="4"
-                      required
+                      id="auth-name"
+                      name="name"
+                      type="text"
+                      placeholder="Введите ваше имя"
+                      autocomplete="name"
                     />
-                  </label>
+
+                    <span
+                      id="auth-name-error"
+                      class="form-error"
+                    ></span>
+
+                  </div>
                 `
                 : ''
             }
 
-            <p
-              class="auth-form__error"
-              data-auth-error
-              aria-live="polite"
-            ></p>
+            <div class="form-group">
+
+              <label for="auth-email">
+                Email
+              </label>
+
+              <input
+                id="auth-email"
+                name="email"
+                type="email"
+                placeholder="example@mail.com"
+                autocomplete="email"
+              />
+
+              <span
+                id="auth-email-error"
+                class="form-error"
+              ></span>
+
+            </div>
+
+            <div class="form-group">
+
+              <label for="auth-password">
+                Пароль
+              </label>
+
+              <div class="password-wrapper">
+
+                <input
+                  id="auth-password"
+                  name="password"
+                  type="password"
+                  placeholder="Введите пароль"
+                  autocomplete="${
+                    isLogin
+                      ? 'current-password'
+                      : 'new-password'
+                  }"
+                />
+
+                <button
+                  id="password-toggle"
+                  class="password-toggle"
+                  type="button"
+                  aria-label="Показать пароль"
+                >
+                  👁
+                </button>
+
+              </div>
+
+              <span
+                id="auth-password-error"
+                class="form-error"
+              ></span>
+
+            </div>
+
+            <div
+              id="auth-general-error"
+              class="form-error form-error--general"
+              role="alert"
+            ></div>
 
             <button
-              class="auth-form__submit"
+              id="auth-submit"
+              class="auth-submit"
               type="submit"
             >
               ${
-                this.mode === 'login'
+                isLogin
                   ? 'Войти'
                   : 'Зарегистрироваться'
               }
             </button>
+
           </form>
 
-          <button
-            class="auth__switch"
-            type="button"
-            data-switch
-          >
-            ${
-              this.mode === 'login'
-                ? 'Нет аккаунта? Зарегистрироваться'
-                : 'Уже есть аккаунт? Войти'
-            }
-          </button>
-        </div>
-      </section>
+          <div class="auth-switch">
+
+            <span>
+              ${
+                isLogin
+                  ? 'Нет аккаунта?'
+                  : 'Уже есть аккаунт?'
+              }
+            </span>
+
+            <button
+              id="auth-switch-button"
+              class="auth-switch__button"
+              type="button"
+            >
+              ${
+                isLogin
+                  ? 'Зарегистрироваться'
+                  : 'Войти'
+              }
+            </button>
+
+          </div>
+
+          ${
+            isLogin
+              ? `
+                <button
+                  id="guest-button"
+                  class="guest-button"
+                  type="button"
+                >
+                  Продолжить без аккаунта
+                </button>
+              `
+              : ''
+          }
+
+        </section>
+
+      </main>
     `;
-
-    this.root.append(
-      page,
-    );
-
-    this.bindEvents(
-      page,
-    );
   }
 
-  private bindEvents(
-    page: HTMLElement,
-  ): void {
+  private bindEvents(): void {
     const form =
-      page.querySelector<HTMLFormElement>(
-        '[data-auth-form]',
-      );
-
-    const switchButton =
-      page.querySelector<HTMLButtonElement>(
-        '[data-switch]',
+      this.root.querySelector<HTMLFormElement>(
+        '#auth-form',
       );
 
     form?.addEventListener(
@@ -177,192 +227,417 @@ export class AuthPage {
       (event) => {
         event.preventDefault();
 
-        void this.handleSubmit(
-          form,
-          page,
-        );
+        void this.submitForm(form);
       },
     );
+
+    const switchButton =
+      this.root.querySelector<HTMLButtonElement>(
+        '#auth-switch-button',
+      );
 
     switchButton?.addEventListener(
       'click',
       () => {
-        if (
-          this.mode === 'login'
-        ) {
-          this.router.navigate(
-            '/register',
-          );
+        if (this.mode === 'login') {
+          this.navigate('/register');
         } else {
-          this.router.navigate(
-            '/login',
-          );
+          this.navigate('/login');
         }
       },
     );
+
+    const guestButton =
+      this.root.querySelector<HTMLButtonElement>(
+        '#guest-button',
+      );
+
+    guestButton?.addEventListener(
+      'click',
+      () => {
+        this.navigate('/');
+      },
+    );
+
+    const passwordToggle =
+      this.root.querySelector<HTMLButtonElement>(
+        '#password-toggle',
+      );
+
+    const passwordInput =
+      this.root.querySelector<HTMLInputElement>(
+        '#auth-password',
+      );
+
+    passwordToggle?.addEventListener(
+      'click',
+      () => {
+        if (!passwordInput) {
+          return;
+        }
+
+        const isPassword =
+          passwordInput.type === 'password';
+
+        passwordInput.type =
+          isPassword
+            ? 'text'
+            : 'password';
+
+        passwordToggle.textContent =
+          isPassword
+            ? '🙈'
+            : '👁';
+
+        passwordToggle.setAttribute(
+          'aria-label',
+          isPassword
+            ? 'Скрыть пароль'
+            : 'Показать пароль',
+        );
+      },
+    );
+
+    const inputs =
+      this.root.querySelectorAll<HTMLInputElement>(
+        '#auth-form input',
+      );
+
+    inputs.forEach((input) => {
+      input.addEventListener(
+        'input',
+        () => {
+          this.clearInputError(
+            input.id,
+          );
+        },
+      );
+    });
   }
 
-  private async handleSubmit(
+  private async submitForm(
     form: HTMLFormElement,
-    page: HTMLElement,
   ): Promise<void> {
-    const formData =
-      new FormData(form);
+    this.clearErrors();
 
-    const username =
-      String(
-        formData.get(
-          'username',
-        ) ?? '',
-      ).trim();
-
-    const password =
-      String(
-        formData.get(
-          'password',
-        ) ?? '',
+    const emailInput =
+      form.querySelector<HTMLInputElement>(
+        '#auth-email',
       );
 
-    const confirmPassword =
-      String(
-        formData.get(
-          'confirmPassword',
-        ) ?? '',
+    const passwordInput =
+      form.querySelector<HTMLInputElement>(
+        '#auth-password',
       );
 
-    const errorElement =
-      page.querySelector<HTMLElement>(
-        '[data-auth-error]',
-      );
-
-    const submitButton =
-      form.querySelector<HTMLButtonElement>(
-        '[type="submit"]',
+    const nameInput =
+      form.querySelector<HTMLInputElement>(
+        '#auth-name',
       );
 
     if (
-      username.length < 3
+      !emailInput ||
+      !passwordInput
     ) {
-      this.showError(
-        errorElement,
-        'Имя пользователя должно содержать минимум 3 символа.',
-      );
-
       return;
     }
 
-    if (
-      password.length < 4
-    ) {
+    const email =
+      emailInput.value.trim();
+
+    const password =
+      passwordInput.value;
+
+    const name =
+      nameInput?.value.trim() ?? '';
+
+    let isValid = true;
+
+    if (!email) {
       this.showError(
-        errorElement,
-        'Пароль должен содержать минимум 4 символа.',
+        'auth-email-error',
+        'Введите email',
       );
 
-      return;
+      this.markInputError(
+        emailInput,
+      );
+
+      isValid = false;
+    } else if (
+      !this.isValidEmail(email)
+    ) {
+      this.showError(
+        'auth-email-error',
+        'Введите корректный email',
+      );
+
+      this.markInputError(
+        emailInput,
+      );
+
+      isValid = false;
+    }
+
+    if (!password) {
+      this.showError(
+        'auth-password-error',
+        'Введите пароль',
+      );
+
+      this.markInputError(
+        passwordInput,
+      );
+
+      isValid = false;
+    } else if (
+      password.length < 6
+    ) {
+      this.showError(
+        'auth-password-error',
+        'Пароль должен содержать минимум 6 символов',
+      );
+
+      this.markInputError(
+        passwordInput,
+      );
+
+      isValid = false;
     }
 
     if (
       this.mode === 'register' &&
-      password !== confirmPassword
+      !name
     ) {
-      this.showError(
-        errorElement,
-        'Пароли не совпадают.',
-      );
-
-      return;
-    }
-
-    this.setLoading(
-      submitButton,
-      true,
-    );
-
-    this.clearError(
-      errorElement,
-    );
-
-    try {
-      if (
-        this.mode === 'register'
-      ) {
-        await this.authService.register(
-          username,
-          password,
+      if (nameInput) {
+        this.showError(
+          'auth-name-error',
+          'Введите имя',
         );
 
-        await this.authService.login(
-          username,
-          password,
-        );
-      } else {
-        await this.authService.login(
-          username,
-          password,
+        this.markInputError(
+          nameInput,
         );
       }
 
-      this.router.navigate(
-        '/',
-      );
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Произошла ошибка. Попробуйте ещё раз.';
-
-      this.showError(
-        errorElement,
-        message,
-      );
-    } finally {
-      this.setLoading(
-        submitButton,
-        false,
-      );
+      isValid = false;
     }
+
+    if (!isValid) {
+      return;
+    }
+
+    const submitButton =
+      form.querySelector<HTMLButtonElement>(
+        '#auth-submit',
+      );
+
+    if (submitButton) {
+      submitButton.disabled = true;
+
+      submitButton.textContent =
+        this.mode === 'login'
+          ? 'Вход...'
+          : 'Регистрация...';
+    }
+
+    try {
+      if (this.mode === 'login') {
+        await this.login(
+          email,
+          password,
+        );
+      } else {
+        await this.register(
+          name,
+          email,
+          password,
+        );
+      }
+    } catch (error) {
+      this.handleError(error);
+
+      if (submitButton) {
+        submitButton.disabled = false;
+
+        submitButton.textContent =
+          this.mode === 'login'
+            ? 'Войти'
+            : 'Зарегистрироваться';
+      }
+    }
+  }
+
+  private async login(
+    email: string,
+    password: string,
+  ): Promise<void> {
+    await authService.login(
+      email,
+      password,
+    );
+
+    this.navigate('/');
+  }
+
+  private async register(
+    name: string,
+    email: string,
+    password: string,
+  ): Promise<void> {
+    await authService.register(
+      name,
+      email,
+      password,
+    );
+
+    this.navigate('/');
+  }
+
+  private handleError(
+    error: unknown,
+  ): void {
+    let message =
+      'Не удалось выполнить операцию. Попробуйте ещё раз.';
+
+    if (error instanceof Error) {
+      message =
+        error.message || message;
+    }
+
+    const generalError =
+      this.root.querySelector<HTMLElement>(
+        '#auth-general-error',
+      );
+
+    if (generalError) {
+      generalError.textContent =
+        this.normalizeErrorMessage(
+          message,
+        );
+    }
+  }
+
+  private normalizeErrorMessage(
+    message: string,
+  ): string {
+    const lower =
+      message.toLowerCase();
+
+    if (
+      lower.includes('401') ||
+      lower.includes('unauthorized') ||
+      lower.includes('неверн')
+    ) {
+      return 'Неверный email или пароль.';
+    }
+
+    if (
+      lower.includes('409') ||
+      lower.includes('существ')
+    ) {
+      return 'Пользователь с таким email уже существует.';
+    }
+
+    if (
+      lower.includes('network') ||
+      lower.includes('fetch') ||
+      lower.includes('failed to fetch')
+    ) {
+      return 'Проблема с соединением с сервером.';
+    }
+
+    if (
+      lower.includes('400')
+    ) {
+      return 'Проверьте правильность введённых данных.';
+    }
+
+    return message;
+  }
+
+  private clearErrors(): void {
+    const errors =
+      this.root.querySelectorAll<HTMLElement>(
+        '.form-error',
+      );
+
+    errors.forEach((error) => {
+      error.textContent = '';
+    });
+
+    const inputs =
+      this.root.querySelectorAll<HTMLInputElement>(
+        '#auth-form input',
+      );
+
+    inputs.forEach((input) => {
+      input.classList.remove(
+        'input--error',
+      );
+    });
+  }
+
+  private clearInputError(
+    inputId: string,
+  ): void {
+    const input =
+      this.root.querySelector<HTMLInputElement>(
+        `#${inputId}`,
+      );
+
+    input?.classList.remove(
+      'input--error',
+    );
+
+    const errorId =
+      `${inputId}-error`;
+
+    const error =
+      this.root.querySelector<HTMLElement>(
+        `#${errorId}`,
+      );
+
+    error?.replaceChildren();
+  }
+
+  private markInputError(
+    input: HTMLInputElement,
+  ): void {
+    input.classList.add(
+      'input--error',
+    );
   }
 
   private showError(
-    element: HTMLElement | null,
+    id: string,
     message: string,
   ): void {
-    if (!element) {
-      return;
-    }
+    const element =
+      this.root.querySelector<HTMLElement>(
+        `#${id}`,
+      );
 
-    element.textContent =
-      message;
+    if (element) {
+      element.textContent = message;
+    }
   }
 
-  private clearError(
-    element: HTMLElement | null,
-  ): void {
-    if (!element) {
-      return;
-    }
-
-    element.textContent =
-      '';
+  private isValidEmail(
+    email: string,
+  ): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+      email,
+    );
   }
 
-  private setLoading(
-    button: HTMLButtonElement | null,
-    loading: boolean,
+  private navigate(
+    path: string,
   ): void {
-    if (!button) {
-      return;
-    }
-
-    button.disabled =
-      loading;
-
-    button.textContent =
-      loading
-        ? 'Загрузка...'
-        : this.mode === 'login'
-          ? 'Войти'
-          : 'Зарегистрироваться';
+    window.dispatchEvent(
+      new CustomEvent('navigate', {
+        detail: path,
+      }),
+    );
   }
 }

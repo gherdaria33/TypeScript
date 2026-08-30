@@ -1,7 +1,7 @@
 const express = require("express");
 const authController = require("../controllers/authController");
 const trackController = require("../controllers/trackController");
-const authenticate = require("../middleware/authMiddleware");
+const authenticate = require("../middleware/auth");
 const router = express.Router();
 /*
  * Авторизация

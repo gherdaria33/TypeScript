@@ -1,609 +1,781 @@
-import { Header } from '../../components/Header';
-import { Sidebar } from '../../components/Sidebar';
-import { TrackCard } from '../../components/TrackCard';
-import { AudioPlayer } from '../../components/AudioPlayer';
+import {
+  trackService,
+  type Track,
+} from '../../services/trackService';
 
-import { TrackService } from '../../services/trackService';
-import { LocalStorageClass } from '../../services/localStorageClass';
-
-import type { Track } from '../../types/track';
-import type { Router } from '../../router/Router';
+import { favoriteService } from '../../services/favoriteService';
+import { playerService } from '../../services/playerService';
 
 export class FavouritePage {
-  private readonly root: HTMLElement;
-  private readonly router: Router;
-  private readonly token: string;
-  private readonly username: string;
-
-  private readonly trackService: TrackService;
-  private readonly storage: LocalStorageClass;
+  private root: HTMLElement;
 
   private tracks: Track[] = [];
-  private filteredTracks: Track[] = [];
 
-  private currentTrackId:
-    string | null = null;
+  private unsubscribePlayer:
+    (() => void) | null = null;
 
-  private audioPlayer:
-    AudioPlayer | null = null;
-
-  public constructor(
-    root: HTMLElement,
-    router: Router,
-    token: string,
-    username: string,
-  ) {
+  constructor(root: HTMLElement) {
     this.root = root;
-    this.router = router;
-    this.token = token;
-    this.username = username;
-
-    this.trackService =
-      new TrackService();
-
-    this.storage =
-      new LocalStorageClass();
   }
 
-  public async render(): Promise<void> {
-    this.root.innerHTML = '';
+  async render(): Promise<void> {
+    this.unsubscribePlayer?.();
 
-    const layout =
-      document.createElement('div');
+    this.root.innerHTML = `
+      <section class="favourite-page">
 
-    layout.className =
-      'app-layout';
+        <div class="page-heading">
+          <span class="page-heading__eyebrow">
+            YOUR COLLECTION
+          </span>
 
-    const sidebar =
-      document.createElement('aside');
+          <h1>Избранное</h1>
 
-    sidebar.className =
-      'app-layout__sidebar';
+          <p>
+            Здесь находятся треки, которые вы сохранили.
+          </p>
+        </div>
 
-    const main =
-      document.createElement('div');
+        <div
+          id="favourite-state"
+          class="tracks-state"
+        >
+          <div class="page-loading">
+            <div class="loader"></div>
+            <span>
+              Загрузка избранного...
+            </span>
+          </div>
+        </div>
 
-    main.className =
-      'app-layout__main';
+        <div
+          id="favourite-grid"
+          class="tracks-grid"
+        ></div>
+      </section>
 
-    const header =
-      document.createElement('div');
+      <div
+        id="favourite-player"
+        class="audio-player audio-player--hidden"
+      >
+        <div class="audio-player__cover">
+          <img
+            id="favourite-player-cover"
+            src=""
+            alt=""
+          />
+        </div>
 
-    header.className =
-      'app-layout__header';
+        <div class="audio-player__info">
+          <strong id="favourite-player-title">
+            —
+          </strong>
 
-    const content =
-      document.createElement('main');
+          <span id="favourite-player-artist">
+            —
+          </span>
+        </div>
 
-    content.className =
-      'app-layout__content';
+        <button
+          id="favourite-player-play"
+          class="player-button"
+          type="button"
+          aria-label="Воспроизвести"
+        >
+          ▶
+        </button>
 
-    layout.append(
-      sidebar,
-      main,
-    );
+        <div class="player-progress">
+          <span id="favourite-current-time">
+            00:00
+          </span>
 
-    main.append(
-      header,
-      content,
-    );
+          <input
+            id="favourite-progress"
+            type="range"
+            min="0"
+            max="100"
+            value="0"
+            step="0.1"
+          />
 
-    this.root.append(
-      layout,
-    );
+          <span id="favourite-duration">
+            00:00
+          </span>
+        </div>
 
-    this.createSidebar(
-      sidebar,
-    );
+        <div class="player-volume">
+          <span>🔊</span>
 
-    this.createHeader(
-      header,
-      content,
-    );
+          <input
+            id="favourite-volume"
+            type="range"
+            min="0"
+            max="1"
+            value="1"
+            step="0.01"
+          />
+        </div>
+      </div>
+    `;
 
-    this.createPlayer();
+    this.bindEvents();
 
-    await this.loadFavorites(
-      content,
-    );
-  }
+    const volume =
+      this.root.querySelector<HTMLInputElement>(
+        '#favourite-volume',
+      );
 
-  private createSidebar(
-    container: HTMLElement,
-  ): void {
-    const sidebar =
-      new Sidebar({
-        currentRoute:
-          '/favorites',
+    if (volume) {
+      volume.value = String(
+        playerService.getVolume(),
+      );
+    }
 
-        onNavigate:
-          (route) => {
-            this.router.navigate(
-              route,
-            );
-          },
+    this.unsubscribePlayer =
+      playerService.subscribe(() => {
+        this.updatePlayer();
       });
 
-    sidebar.render(
-      container,
-    );
+    await this.loadFavorites();
   }
 
-  private createHeader(
-    container: HTMLElement,
-    content: HTMLElement,
-  ): void {
-    const header =
-      new Header({
-        username:
-          this.username,
-
-        onSearch:
-          (value) => {
-            this.search(
-              value,
-              content,
-            );
-          },
-      });
-
-    header.render(
-      container,
-    );
-  }
-
-  private createPlayer(): void {
-    const container =
-      document.createElement('div');
-
-    container.className =
-      'app-layout__player';
-
-    this.root.append(
-      container,
-    );
-
-    this.audioPlayer =
-      new AudioPlayer({
-        onNext: () => {
-          this.playNext();
-        },
-
-        onPrevious: () => {
-          this.playPrevious();
-        },
-      });
-
-    this.audioPlayer.render(
-      container,
-    );
-  }
-
-  private async loadFavorites(
-    content: HTMLElement,
-  ): Promise<void> {
-    this.showLoading(
-      content,
-    );
-
+  private async loadFavorites(): Promise<void> {
     try {
+      const allTracks =
+        await trackService.getTracks();
+
       this.tracks =
-        await this.trackService.getFavorites(
-          this.token,
+        await favoriteService.getFavoriteTracks(
+          allTracks,
         );
 
-      this.filteredTracks =
-        this.tracks;
-
-      this.renderTracks(
-        content,
-      );
+      this.renderTracks();
+      this.updatePlayer();
     } catch (error) {
-      this.showError(
-        content,
-        error,
-      );
+      this.renderError(error);
     }
   }
 
-  private renderTracks(
-    content: HTMLElement,
-  ): void {
-    content.innerHTML = '';
+  private renderTracks(): void {
+    const grid =
+      this.root.querySelector<HTMLElement>(
+        '#favourite-grid',
+      );
 
-    const header =
-      document.createElement('div');
+    const state =
+      this.root.querySelector<HTMLElement>(
+        '#favourite-state',
+      );
 
-    header.className =
-      'tracks-header';
+    if (!grid || !state) {
+      return;
+    }
 
-    header.innerHTML = `
-      <div>
-        <p class="tracks-header__subtitle">
-          Ваша музыкальная коллекция
-        </p>
+    state.innerHTML = '';
 
-        <h1 class="tracks-header__title">
-          Избранное
-        </h1>
-      </div>
+    if (this.tracks.length === 0) {
+      grid.innerHTML = `
+        <div class="empty-state">
 
-      <span class="tracks-header__count">
-        ${
-          this.filteredTracks.length
-        } ${
-          this.getTrackWord(
-            this.filteredTracks.length,
-          )
-        }
-      </span>
-    `;
-
-    content.append(
-      header,
-    );
-
-    const table =
-      document.createElement('section');
-
-    table.className =
-      'tracks-table';
-
-    const tableHead =
-      document.createElement('div');
-
-    tableHead.className =
-      'tracks-table__head';
-
-    tableHead.innerHTML = `
-      <span>№</span>
-      <span>Название</span>
-      <span>Альбом</span>
-      <span>Дата</span>
-      <span></span>
-      <span></span>
-    `;
-
-    const body =
-      document.createElement('div');
-
-    body.className =
-      'tracks-table__body';
-
-    if (
-      this.filteredTracks.length ===
-      0
-    ) {
-      body.innerHTML = `
-        <div class="tracks-empty">
-          <div class="tracks-empty__icon">
+          <div class="empty-state__icon">
             ♡
           </div>
 
           <h2>
-            В избранном пока пусто
+            Избранное пока пусто
           </h2>
 
           <p>
-            Добавляйте понравившиеся композиции
-            с помощью сердечка.
+            Добавьте понравившиеся треки
+            с главной страницы.
           </p>
+
+          <button
+            id="go-home"
+            class="primary-button"
+            type="button"
+          >
+            Найти музыку
+          </button>
+
         </div>
       `;
-    } else {
-      this.filteredTracks.forEach(
-        (
-          track,
-          index,
-        ) => {
-          const card =
-            new TrackCard(
-              track,
+
+      const button =
+        this.root.querySelector<HTMLButtonElement>(
+          '#go-home',
+        );
+
+      button?.addEventListener(
+        'click',
+        () => {
+          window.dispatchEvent(
+            new CustomEvent(
+              'navigate',
               {
-                index:
-                  index + 1,
-
-                isFavorite:
-                  true,
-
-                isPlaying:
-                  this.currentTrackId ===
-                  track.id,
-
-                onPlay:
-                  (selectedTrack) => {
-                    this.playTrack(
-                      selectedTrack,
-                    );
-                  },
-
-                onFavorite:
-                  (selectedTrack) => {
-                    void this.removeFavorite(
-                      selectedTrack,
-                      content,
-                    );
-                  },
-
-                onMenu:
-                  (selectedTrack) => {
-                    console.log(
-                      'Меню:',
-                      selectedTrack,
-                    );
-                  },
+                detail: '/',
               },
-            );
-
-          body.append(
-            card.render(),
+            ),
           );
         },
       );
+
+      return;
     }
 
-    table.append(
-      tableHead,
-      body,
-    );
+    grid.innerHTML =
+      this.tracks
+        .map(
+          (track) =>
+            this.createTrackCard(track),
+        )
+        .join('');
 
-    content.append(
-      table,
-    );
+    this.bindTrackCards();
   }
 
-  private search(
-    value: string,
-    content: HTMLElement,
-  ): void {
-    const query =
-      value.trim().toLowerCase();
+  private createTrackCard(
+    track: Track,
+  ): string {
+    const current =
+      playerService.getCurrentTrack();
 
-    if (!query) {
-      this.filteredTracks =
-        this.tracks;
-    } else {
-      this.filteredTracks =
-        this.tracks.filter(
-          (track) =>
-            track.title
-              .toLowerCase()
-              .includes(query) ||
-            track.artist
-              .toLowerCase()
-              .includes(query),
+    const isCurrent =
+      current !== null &&
+      String(current.id) ===
+        String(track.id);
+
+    const isPlaying =
+      playerService.isPlaying(
+        track.id,
+      );
+
+    return `
+      <article
+        class="track-card ${
+          isCurrent
+            ? 'track-card--active'
+            : ''
+        }"
+        data-track-id="${this.escapeHtml(
+          String(track.id),
+        )}"
+      >
+
+        <div class="track-card__cover">
+
+          ${
+            track.cover
+              ? `
+                <img
+                  src="${this.escapeHtml(
+                    track.cover,
+                  )}"
+                  alt="${this.escapeHtml(
+                    track.title,
+                  )}"
+                  loading="lazy"
+                />
+              `
+              : `
+                <div class="track-card__placeholder">
+                  ♪
+                </div>
+              `
+          }
+
+          <button
+            class="track-card__play"
+            data-action="play"
+            type="button"
+            aria-label="${
+              isCurrent && isPlaying
+                ? 'Пауза'
+                : 'Воспроизвести'
+            }"
+          >
+            ${
+              isCurrent && isPlaying
+                ? '❚❚'
+                : '▶'
+            }
+          </button>
+
+        </div>
+
+        <div class="track-card__body">
+
+          <div class="track-card__main">
+            <h3>
+              ${this.escapeHtml(
+                track.title,
+              )}
+            </h3>
+
+            <p>
+              ${this.escapeHtml(
+                track.artist,
+              )}
+            </p>
+          </div>
+
+          <button
+            class="track-card__favorite
+              track-card__favorite--active"
+            data-action="favorite"
+            type="button"
+            aria-label="Удалить из избранного"
+          >
+            ♥
+          </button>
+
+        </div>
+
+        <div class="track-card__footer">
+
+          <span>
+            ${
+              track.album
+                ? this.escapeHtml(
+                    track.album,
+                  )
+                : 'Single'
+            }
+          </span>
+
+          <span>
+            ${this.escapeHtml(
+              track.durationFormatted ??
+                '00:00',
+            )}
+          </span>
+
+        </div>
+
+      </article>
+    `;
+  }
+
+  private bindTrackCards(): void {
+    const cards =
+      this.root.querySelectorAll<HTMLElement>(
+        '.track-card',
+      );
+
+    cards.forEach((card) => {
+      const id =
+        card.dataset.trackId;
+
+      if (!id) {
+        return;
+      }
+
+      const track =
+        this.tracks.find(
+          (item) =>
+            String(item.id) ===
+            String(id),
         );
-    }
 
-    this.renderTracks(
-      content,
-    );
+      if (!track) {
+        return;
+      }
+
+      const play =
+        card.querySelector<HTMLButtonElement>(
+          '[data-action="play"]',
+        );
+
+      play?.addEventListener(
+        'click',
+        (event) => {
+          event.stopPropagation();
+
+          void this.playTrack(track);
+        },
+      );
+
+      const favorite =
+        card.querySelector<HTMLButtonElement>(
+          '[data-action="favorite"]',
+        );
+
+      favorite?.addEventListener(
+        'click',
+        (event) => {
+          event.stopPropagation();
+
+          void this.removeFavorite(track);
+        },
+      );
+    });
+  }
+
+  private async playTrack(
+    track: Track,
+  ): Promise<void> {
+    try {
+      await playerService.toggle(
+        track,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Не удалось воспроизвести трек.';
+
+      this.showError(message);
+    }
   }
 
   private async removeFavorite(
     track: Track,
-    content: HTMLElement,
   ): Promise<void> {
     try {
-      await this.trackService.removeFavorite(
+      await favoriteService.removeFavorite(
         track.id,
-        this.token,
       );
 
       this.tracks =
         this.tracks.filter(
           (item) =>
-            item.id !== track.id,
+            String(item.id) !==
+            String(track.id),
         );
 
-      this.filteredTracks =
-        this.filteredTracks.filter(
-          (item) =>
-            item.id !== track.id,
-        );
-
-      this.renderTracks(
-        content,
-      );
-    } catch (error) {
-      console.error(
-        'Ошибка удаления из избранного:',
-        error,
+      this.renderTracks();
+    } catch {
+      this.showError(
+        'Не удалось удалить трек из избранного.',
       );
     }
   }
 
-  private playTrack(
-    track: Track,
-  ): void {
-    this.currentTrackId =
-      track.id;
-
-    this.audioPlayer?.setTrack(
-      track,
-    );
-
-    this.audioPlayer?.play();
-
-    const content =
-      this.root.querySelector<HTMLElement>(
-        '.app-layout__content',
+  private bindEvents(): void {
+    const play =
+      this.root.querySelector<HTMLButtonElement>(
+        '#favourite-player-play',
       );
 
-    if (content) {
-      this.renderTracks(
-        content,
-      );
-    }
-  }
-
-  private playNext(): void {
-    if (
-      this.tracks.length === 0
-    ) {
-      return;
-    }
-
-    const index =
-      this.tracks.findIndex(
-        (track) =>
-          track.id ===
-          this.currentTrackId,
-      );
-
-    const next =
-      index === -1 ||
-      index ===
-        this.tracks.length - 1
-        ? 0
-        : index + 1;
-
-    this.playTrack(
-      this.tracks[next],
-    );
-  }
-
-  private playPrevious(): void {
-    if (
-      this.tracks.length === 0
-    ) {
-      return;
-    }
-
-    const index =
-      this.tracks.findIndex(
-        (track) =>
-          track.id ===
-          this.currentTrackId,
-      );
-
-    const previous =
-      index <= 0
-        ? this.tracks.length - 1
-        : index - 1;
-
-    this.playTrack(
-      this.tracks[previous],
-    );
-  }
-
-  private showLoading(
-    content: HTMLElement,
-  ): void {
-    content.innerHTML = `
-      <div class="state state--loading">
-        <div class="loader"></div>
-
-        <p>
-          Загрузка избранного...
-        </p>
-      </div>
-    `;
-  }
-
-  private showError(
-    content: HTMLElement,
-    error: unknown,
-  ): void {
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Неизвестная ошибка';
-
-    content.innerHTML = `
-      <div class="state state--error">
-        <div class="state__icon">
-          !
-        </div>
-
-        <h2>
-          Не удалось загрузить избранное
-        </h2>
-
-        <p>
-          ${this.escapeHtml(
-            message,
-          )}
-        </p>
-
-        <button
-          class="button button--primary"
-          type="button"
-          data-retry
-        >
-          Повторить
-        </button>
-      </div>
-    `;
-
-    const retry =
-      content.querySelector<HTMLButtonElement>(
-        '[data-retry]',
-      );
-
-    retry?.addEventListener(
+    play?.addEventListener(
       'click',
       () => {
-        void this.loadFavorites(
-          content,
+        void playerService.toggle();
+      },
+    );
+
+    const progress =
+      this.root.querySelector<HTMLInputElement>(
+        '#favourite-progress',
+      );
+
+    progress?.addEventListener(
+      'input',
+      () => {
+        playerService.setCurrentTime(
+          Number(progress.value),
+        );
+      },
+    );
+
+    const volume =
+      this.root.querySelector<HTMLInputElement>(
+        '#favourite-volume',
+      );
+
+    volume?.addEventListener(
+      'input',
+      () => {
+        playerService.setVolume(
+          Number(volume.value),
         );
       },
     );
   }
 
-  private getTrackWord(
-    count: number,
+  private updatePlayer(): void {
+    const track =
+      playerService.getCurrentTrack();
+
+    const player =
+      this.root.querySelector<HTMLElement>(
+        '#favourite-player',
+      );
+
+    const cover =
+      this.root.querySelector<HTMLImageElement>(
+        '#favourite-player-cover',
+      );
+
+    const title =
+      this.root.querySelector<HTMLElement>(
+        '#favourite-player-title',
+      );
+
+    const artist =
+      this.root.querySelector<HTMLElement>(
+        '#favourite-player-artist',
+      );
+
+    const play =
+      this.root.querySelector<HTMLButtonElement>(
+        '#favourite-player-play',
+      );
+
+    const current =
+      this.root.querySelector<HTMLElement>(
+        '#favourite-current-time',
+      );
+
+    const duration =
+      this.root.querySelector<HTMLElement>(
+        '#favourite-duration',
+      );
+
+    const progress =
+      this.root.querySelector<HTMLInputElement>(
+        '#favourite-progress',
+      );
+
+    if (!player) {
+      return;
+    }
+
+    if (!track) {
+      player.classList.add(
+        'audio-player--hidden',
+      );
+
+      return;
+    }
+
+    player.classList.remove(
+      'audio-player--hidden',
+    );
+
+    if (cover) {
+      if (track.cover) {
+        cover.src = track.cover;
+        cover.style.display =
+          'block';
+      } else {
+        cover.removeAttribute(
+          'src',
+        );
+
+        cover.style.display =
+          'none';
+      }
+
+      cover.alt =
+        track.title;
+    }
+
+    if (title) {
+      title.textContent =
+        track.title;
+    }
+
+    if (artist) {
+      artist.textContent =
+        track.artist;
+    }
+
+    if (play) {
+      const playing =
+        playerService.isPlaying();
+
+      play.textContent =
+        playing
+          ? '❚❚'
+          : '▶';
+
+      play.setAttribute(
+        'aria-label',
+        playing
+          ? 'Пауза'
+          : 'Воспроизвести',
+      );
+    }
+
+    if (current) {
+      current.textContent =
+        this.formatTime(
+          playerService.getCurrentTime(),
+        );
+    }
+
+    if (duration) {
+      duration.textContent =
+        this.formatTime(
+          playerService.getDuration(),
+        );
+    }
+
+    if (progress) {
+      progress.value =
+        String(
+          playerService.getProgress(),
+        );
+    }
+
+    this.updateActiveCards();
+  }
+
+  private updateActiveCards(): void {
+    const current =
+      playerService.getCurrentTrack();
+
+    const cards =
+      this.root.querySelectorAll<HTMLElement>(
+        '.track-card',
+      );
+
+    cards.forEach((card) => {
+      const id =
+        card.dataset.trackId;
+
+      const active =
+        current !== null &&
+        id !== undefined &&
+        String(current.id) ===
+          String(id);
+
+      card.classList.toggle(
+        'track-card--active',
+        active,
+      );
+
+      const play =
+        card.querySelector<HTMLButtonElement>(
+          '[data-action="play"]',
+        );
+
+      if (play) {
+        play.textContent =
+          active &&
+          playerService.isPlaying()
+            ? '❚❚'
+            : '▶';
+      }
+    });
+  }
+
+  private renderError(
+    error: unknown,
+  ): void {
+    const state =
+      this.root.querySelector<HTMLElement>(
+        '#favourite-state',
+      );
+
+    if (!state) {
+      return;
+    }
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Не удалось загрузить избранное.';
+
+    state.innerHTML = `
+      <div class="empty-state">
+
+        <div class="empty-state__icon">
+          !
+        </div>
+
+        <h2>
+          Ошибка загрузки
+        </h2>
+
+        <p>
+          ${this.escapeHtml(message)}
+        </p>
+
+        <button
+          id="retry-favourites"
+          class="primary-button"
+          type="button"
+        >
+          Повторить
+        </button>
+
+      </div>
+    `;
+
+    const retry =
+      this.root.querySelector<HTMLButtonElement>(
+        '#retry-favourites',
+      );
+
+    retry?.addEventListener(
+      'click',
+      () => {
+        void this.render();
+      },
+    );
+  }
+
+  private showError(
+    message: string,
+  ): void {
+    const state =
+      this.root.querySelector<HTMLElement>(
+        '#favourite-state',
+      );
+
+    if (!state) {
+      return;
+    }
+
+    state.innerHTML = `
+      <div class="error-message">
+        ${this.escapeHtml(message)}
+      </div>
+    `;
+
+    window.setTimeout(() => {
+      state.innerHTML = '';
+    }, 3000);
+  }
+
+  private formatTime(
+    seconds: number,
   ): string {
-    const lastTwo =
-      count % 100;
-
-    const last =
-      count % 10;
-
     if (
-      lastTwo >= 11 &&
-      lastTwo <= 14
+      !Number.isFinite(seconds) ||
+      seconds < 0
     ) {
-      return 'треков';
+      return '00:00';
     }
 
-    if (last === 1) {
-      return 'трек';
-    }
+    const total =
+      Math.floor(seconds);
 
-    if (
-      last >= 2 &&
-      last <= 4
-    ) {
-      return 'трека';
-    }
+    const minutes =
+      Math.floor(total / 60);
 
-    return 'треков';
+    const remaining =
+      total % 60;
+
+    return `${String(minutes).padStart(
+      2,
+      '0',
+    )}:${String(
+      remaining,
+    ).padStart(2, '0')}`;
   }
 
   private escapeHtml(
     value: string,
   ): string {
     return value
-      .replace(
-        /&/g,
-        '&amp;',
-      )
-      .replace(
-        /</g,
-        '&lt;',
-      )
-      .replace(
-        />/g,
-        '&gt;',
-      )
-      .replace(
-        /"/g,
-        '&quot;',
-      )
-      .replace(
-        /'/g,
-        '&#039;',
-      );
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
   }
 }

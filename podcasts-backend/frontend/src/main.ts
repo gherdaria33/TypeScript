@@ -1,19 +1,76 @@
 import './styles/global.css';
-import './styles/header.css';
-import './styles/sidebar.css';
-import './styles/tracks.css';
-import './styles/audio-player.css';
-import './styles/auth.css';
-import { Router } from './router/Router';
-const root =
+
+import { Header } from './view/components/Header';
+import { Side } from './view/components/Side';
+import { Router } from './Router';
+
+const app =
   document.querySelector<HTMLDivElement>(
     '#app',
   );
-if (!root) {
+
+if (!app) {
   throw new Error(
-    'Корневой элемент #app не найден',
+    'Элемент #app не найден в index.html',
   );
 }
+
+app.innerHTML = `
+  <div class="app-shell">
+
+    <div
+      id="header-root"
+      class="header-root"
+    ></div>
+
+    <div
+      id="sidebar-root"
+      class="sidebar-root"
+    ></div>
+
+    <main
+      id="page-root"
+      class="app-content"
+    ></main>
+
+  </div>
+`;
+
+const headerRoot =
+  document.querySelector<HTMLElement>(
+    '#header-root',
+  );
+
+const sidebarRoot =
+  document.querySelector<HTMLElement>(
+    '#sidebar-root',
+  );
+
+const pageRoot =
+  document.querySelector<HTMLElement>(
+    '#page-root',
+  );
+
+if (
+  !headerRoot ||
+  !sidebarRoot ||
+  !pageRoot
+) {
+  throw new Error(
+    'Не удалось создать элементы приложения.',
+  );
+}
+
+const header =
+  new Header(headerRoot);
+
+const sidebar =
+  new Side(sidebarRoot);
+
 const router =
-  new Router(root);
+  new Router(pageRoot);
+
+header.render();
+sidebar.render();
+
 void router.start();
