@@ -1,0 +1,24 @@
+.player { position: fixed; z-index: 50; left: 0; right: 0; bottom: 0; height: 100px; display: grid; grid-template-columns: 290px minmax(0, 1fr); align-items: center; background: #fff; border-top: 1px solid #ddd; }
+.player__info { min-width: 0; height: 100%; display: flex; align-items: center; gap: 11px; padding: 12px 22px; border-right: 1px solid #eee; }
+.player__cover { width: 50px; height: 50px; flex: 0 0 50px; border-radius: 2px; display: grid; place-items: center; background: linear-gradient(145deg, #414347, #a0a0a0); color: #fff; font-size: 20px; }
+.player__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #666669; font-size: 10px; font-weight: 650; }
+.player__artist { margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #aaa; font-size: 8px; }
+.player__controls { display: grid; grid-template-columns: minmax(280px, 1fr); align-items: center; padding: 8px 30px; }
+.player__buttons { display: flex; justify-content: center; align-items: center; gap: 13px; }
+.player__button { min-width: 25px; height: 25px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #8e8e90; font-size: 10px; }
+.player__button:hover { color: var(--red); }
+.player__button--play { width: 30px; height: 30px; background: #777; color: #fff; font-size: 11px; }
+.player__button--play:hover { background: var(--red); color: #fff; }
+.player__timeline { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.player__time { width: 31px; color: #aaa; font-size: 8px; }
+.player__time:last-child { text-align: right; }
+.player__range { width: 100%; height: 3px; accent-color: var(--red); cursor: pointer; }
+
+@media (max-width: 700px) {
+  .player { height: 106px; grid-template-columns: 1fr; padding: 8px 13px; }
+  .player__info { height: 45px; padding: 0; border-right: 0; }
+  .player__cover { width: 38px; height: 38px; flex-basis: 38px; font-size: 15px; }
+  .player__controls { padding: 0; }
+  .player__buttons { gap: 9px; }
+  .player__button--play { width: 34px; height: 34px; }
+}
