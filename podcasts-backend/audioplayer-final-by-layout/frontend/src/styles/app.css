@@ -1,0 +1,79 @@
+.app {
+  min-height: 100vh;
+  background: #f7f7f8;
+  padding-bottom: 124px;
+}
+
+.header {
+  position: fixed;
+  z-index: 20;
+  top: 0;
+  right: 0;
+  left: 270px;
+  height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 42px;
+  background: rgba(247,247,248,.92);
+  border-bottom: 1px solid #e7e7ea;
+  backdrop-filter: blur(18px);
+}
+.header__mobile-title { display: none; }
+.header__actions { display: flex; align-items: center; gap: 12px; }
+.header__profile, .header__logout { border: 0; background: transparent; }
+.header__profile { display: flex; align-items: center; gap: 10px; padding: 5px 8px 5px 5px; border-radius: 12px; font-weight: 700; }
+.header__profile:hover { background: #ececef; }
+.header__avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #19191b; color: #fff; font-size: 13px; }
+.header__logout { padding: 9px 10px; color: #88888f; font-size: 13px; }
+.header__logout:hover { color: #19191b; }
+
+.sidebar {
+  position: fixed;
+  z-index: 25;
+  inset: 0 auto 0 0;
+  width: 270px;
+  padding: 28px 18px;
+  background: #fff;
+  border-right: 1px solid #e7e7ea;
+}
+.sidebar__brand { display: flex; align-items: center; gap: 11px; padding: 5px 10px 42px; font-weight: 800; letter-spacing: -.02em; }
+.sidebar__brand-mark { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: #19191b; color: #fff; font-size: 20px; }
+.sidebar__caption { padding: 0 12px 10px; color: #a0a0a6; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+.sidebar__nav { display: grid; gap: 5px; }
+.sidebar__item { width: 100%; display: flex; align-items: center; gap: 13px; padding: 13px 14px; border: 0; border-radius: 10px; background: transparent; color: #77777f; text-align: left; font-weight: 650; }
+.sidebar__item:hover { color: #19191b; background: #f2f2f4; }
+.sidebar__item--active { background: #19191b; color: #fff; }
+.sidebar__item--active:hover { background: #19191b; color: #fff; }
+.sidebar__icon { width: 20px; text-align: center; font-size: 17px; }
+
+.page { margin-left: 270px; padding: 122px 42px 42px; max-width: 1560px; }
+.page__heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 28px; margin-bottom: 30px; }
+.page__eyebrow { color: #a0a0a6; text-transform: uppercase; letter-spacing: .13em; font-size: 10px; font-weight: 800; }
+.page__title { margin: 8px 0 6px; font-size: clamp(31px, 3.3vw, 48px); line-height: 1; letter-spacing: -.055em; }
+.page__subtitle { max-width: 650px; margin: 0; color: #77777f; font-size: 14px; line-height: 1.55; }
+.page__search { width: min(370px, 100%); height: 46px; border: 1px solid #dfdfe3; border-radius: 12px; padding: 0 15px; background: #fff; outline: 0; }
+.page__search:focus { border-color: #19191b; box-shadow: 0 0 0 3px rgba(25,25,27,.06); }
+.page__status { color: #9a9aa1; font-size: 12px; margin: 0 0 12px; }
+
+.profile-card { max-width: 700px; display: flex; align-items: center; gap: 24px; padding: 30px; background: #fff; border: 1px solid #e7e7ea; border-radius: 20px; }
+.profile-card__avatar { width: 88px; height: 88px; flex: 0 0 88px; border-radius: 24px; display: grid; place-items: center; background: #19191b; color: #fff; font-size: 30px; font-weight: 800; }
+.profile-card__label { color: #a0a0a6; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+.profile-card__name { margin-top: 7px; font-size: 25px; font-weight: 800; }
+.profile-card__hint { margin-top: 7px; color: #8a8a91; font-size: 13px; }
+
+@media (max-width: 800px) {
+  .app { padding-bottom: 182px; }
+  .header { left: 0; height: 64px; padding: 0 14px; }
+  .header__mobile-title { display: block; margin-right: auto; font-weight: 800; }
+  .header__username, .header__logout { display: none; }
+  .sidebar { top: auto; right: 0; bottom: 92px; width: auto; height: 66px; padding: 7px; border-right: 0; border-top: 1px solid #e7e7ea; }
+  .sidebar__brand, .sidebar__caption { display: none; }
+  .sidebar__nav { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .sidebar__item { justify-content: center; padding: 10px 6px; }
+  .sidebar__text { display: none; }
+  .page { margin-left: 0; padding: 88px 14px 28px; }
+  .page__heading { flex-direction: column; align-items: stretch; }
+  .page__search { width: 100%; }
+  .profile-card { padding: 22px; }
+}

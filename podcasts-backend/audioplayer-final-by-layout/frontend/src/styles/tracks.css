@@ -1,0 +1,19 @@
+.tracks-head, .track { display: grid; grid-template-columns: 42px 36px minmax(260px, 1.7fr) minmax(130px, .8fr) 105px 75px 42px 38px; align-items: center; gap: 10px; }
+.tracks-head { padding: 0 14px 9px; color: #a0a0a6; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
+.track { min-height: 68px; padding: 9px 14px; background: #fff; border: 1px solid transparent; border-radius: 10px; cursor: pointer; transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease; }
+.track + .track { margin-top: 5px; }
+.track:hover { border-color: #e2e2e5; transform: translateY(-1px); box-shadow: 0 8px 22px rgba(0,0,0,.035); }
+.track__number, .track__duration, .track__date, .track__album { color: #9999a0; font-size: 12px; }
+.track__play { width: 30px; height: 30px; border: 0; border-radius: 50%; display: grid; place-items: center; background: #f1f1f3; color: #19191b; font-size: 10px; }
+.track__main { min-width: 0; }
+.track__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 750; }
+.track__artist { margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #9b9ba2; font-size: 11px; }
+.track__favorite, .track__menu { border: 0; background: transparent; color: #a0a0a6; padding: 5px; font-size: 19px; }
+.track__favorite:hover, .track__favorite--active { color: #19191b; }
+.track__menu { font-size: 12px; letter-spacing: 2px; }
+.track__menu:hover { color: #19191b; }
+.pagination { display: flex; justify-content: center; gap: 6px; margin: 22px 0; flex-wrap: wrap; }
+.pagination__button { width: 34px; height: 34px; border: 1px solid #dedee2; border-radius: 9px; background: #fff; color: #66666d; }
+.pagination__button--active { background: #19191b; color: #fff; border-color: #19191b; }
+@media (max-width: 1000px) { .tracks-head, .track { grid-template-columns: 35px 34px minmax(0,1fr) 42px 38px; } .track__album, .track__date, .track__duration { display: none; } }
+@media (max-width: 560px) { .tracks-head { display: none; } .track { min-height: 62px; padding: 8px 9px; } .track__number { font-size: 10px; } }

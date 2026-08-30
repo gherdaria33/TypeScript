@@ -1,0 +1,14 @@
+.player { position: fixed; z-index: 40; right: 0; bottom: 0; left: 0; min-height: 108px; display: grid; grid-template-columns: 300px minmax(0,1fr); align-items: center; gap: 28px; padding: 14px 30px; background: rgba(255,255,255,.97); border-top: 1px solid #e4e4e7; box-shadow: 0 -12px 35px rgba(0,0,0,.045); backdrop-filter: blur(18px); }
+.player__info { min-width: 0; display: flex; align-items: center; gap: 12px; }
+.player__cover { width: 54px; height: 54px; flex: 0 0 54px; display: grid; place-items: center; border-radius: 12px; background: #19191b; color: #fff; font-size: 20px; }
+.player__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 800; }
+.player__artist { margin-top: 4px; color: #9999a0; font-size: 11px; }
+.player__buttons { display: flex; justify-content: center; align-items: center; gap: 7px; }
+.player__button { min-width: 34px; height: 34px; border: 0; border-radius: 9px; background: transparent; color: #626269; font-size: 11px; }
+.player__button:hover { background: #f1f1f3; color: #19191b; }
+.player__button--play { width: 42px; height: 42px; border-radius: 50%; background: #19191b; color: #fff; }
+.player__button--play:hover { background: #19191b; color: #fff; }
+.player__timeline { display: flex; align-items: center; gap: 9px; margin-top: 4px; }
+.player__time { width: 33px; color: #9999a0; font-size: 10px; }
+.player__range { width: 100%; height: 3px; accent-color: #19191b; cursor: pointer; }
+@media (max-width: 800px) { .player { grid-template-columns: 1fr; gap: 4px; min-height: 92px; padding: 9px 12px; } .player__info { display: none; } }
