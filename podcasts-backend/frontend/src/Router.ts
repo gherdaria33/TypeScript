@@ -1,241 +1,125 @@
-import { AuthPage } from './view/pages/AuthPage';
-import { MainPage } from './view/pages/MainPage';
-import { FavouritePage } from './view/pages/FavouritePage';
-import { ProfilePage } from './view/pages/ProfilePage';
-
+import { AuthPage } from './pages/AuthPage';
+import { MainPage } from './pages/MainPage';
+import { FavouritePage } from './pages/FavouritePage';
+import { ProfilePage } from './pages/ProfilePage';
+import { Player } from './components/Player';
 import { authService } from './services/authService';
+
+type Route = 'tracks' | 'favorites' | 'profile';
 
 export class Router {
   private root: HTMLElement;
-
-  private currentPage:
-    | MainPage
-    | FavouritePage
-    | ProfilePage
-    | AuthPage
-    | null = null;
+  private shell: HTMLElement;
 
   constructor(root: HTMLElement) {
     this.root = root;
-
-    window.addEventListener(
-      'navigate',
-      (event) => {
-        const customEvent =
-          event as CustomEvent<string>;
-
-        this.navigate(
-          customEvent.detail,
-        );
-      },
-    );
-
-    window.addEventListener(
-      'popstate',
-      () => {
-        void this.renderCurrentRoute();
-      },
-    );
+    this.shell = elShell();
+    this.root.append(this.shell);
+    window.addEventListener('popstate', () => this.render());
   }
 
-  async start(): Promise<void> {
-    await this.renderCurrentRoute();
-  }
-
-  async navigate(
-    route: string,
-  ): Promise<void> {
-    const normalizedRoute =
-      this.normalizeRoute(route);
-
-    if (
-      window.location.pathname !==
-      normalizedRoute
-    ) {
-      window.history.pushState(
-        {},
-        '',
-        normalizedRoute,
-      );
+  start(): void {
+    if (!authService.isAuthenticated()) {
+      this.showAuth();
+    } else {
+      this.navigate(this.getRoute());
     }
-
-    await this.renderCurrentRoute();
   }
 
-  private async renderCurrentRoute(): Promise<void> {
-    const route =
-      this.normalizeRoute(
-        window.location.pathname,
-      );
+  private getRoute(): Route {
+    const path = window.location.pathname;
+    if (path === '/favorites') return 'favorites';
+    if (path === '/profile') return 'profile';
+    return 'tracks';
+  }
 
-    const isAuthenticated =
-      authService.isAuthenticated();
+  navigate(route: Route): void {
+    const path = route === 'tracks' ? '/' : `/${route}`;
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+    this.render();
+  }
 
-    /*
-     * Если пользователь не авторизован,
-     * закрытые страницы отправляем на login.
-     */
-
-    if (
-      !isAuthenticated &&
-      route !== '/login'
-    ) {
-      await this.navigate('/login');
+  private render(): void {
+    if (!authService.isAuthenticated()) {
+      this.showAuth();
       return;
     }
 
-    /*
-     * Авторизованный пользователь,
-     * который открывает /login,
-     * отправляется на главную.
-     */
-
-    if (
-      isAuthenticated &&
-      route === '/login'
-    ) {
-      await this.navigate('/');
-      return;
-    }
-
-    switch (route) {
-      case '/login':
-        await this.showAuthPage();
-        break;
-
-      case '/':
-        await this.showMainPage();
-        break;
-
-      case '/favorites':
-        await this.showFavouritePage();
-        break;
-
-      case '/profile':
-        this.showProfilePage();
-        break;
-
-      default:
-        await this.navigate('/');
-        return;
-    }
-
-    window.dispatchEvent(
-      new CustomEvent(
-        'route-changed',
-        {
-          detail: route,
-        },
-      ),
-    );
+    this.showApp(this.getRoute());
   }
 
-  private async showMainPage(): Promise<void> {
+  private showAuth(): void {
+    this.root.replaceChildren(new AuthPage(() => {
+      window.history.replaceState({}, '', '/');
+      this.showApp('tracks');
+    }).el);
+  }
+
+  private showApp(route: Route): void {
     const page =
-      new MainPage(this.root);
+      route === 'favorites' ? new FavouritePage() :
+      route === 'profile' ? new ProfilePage() :
+      new MainPage();
 
-    this.currentPage = page;
+    const user = authService.getUser();
+    const header = document.createElement('header');
+    header.className = 'header';
+    header.innerHTML = `
+      <div class="header__brand"><span class="header__brand-mark">♫</span><span>Audio Player</span></div>
+      <div class="header__actions">
+        <button class="header__profile" type="button">
+          <span class="header__avatar">${(user?.username?.[0] ?? 'U').toUpperCase()}</span>
+          <span class="header__username">${user?.username ?? 'Пользователь'}</span>
+        </button>
+        <button class="header__logout" type="button">Выйти</button>
+      </div>
+    `;
 
-    await page.render();
+    header.querySelector('.header__profile')?.addEventListener('click', () => this.navigate('profile'));
+    header.querySelector('.header__logout')?.addEventListener('click', () => {
+      authService.logout();
+      this.showAuth();
+    });
+
+    const sidebar = document.createElement('aside');
+    sidebar.className = 'sidebar';
+    sidebar.innerHTML = `
+      <nav class="sidebar__nav">
+        <button class="sidebar__item ${route === 'tracks' ? 'sidebar__item--active' : ''}" data-route="tracks">▣ <span>Все композиции</span></button>
+        <button class="sidebar__item ${route === 'favorites' ? 'sidebar__item--active' : ''}" data-route="favorites">♡ <span>Избранное</span></button>
+        <button class="sidebar__item ${route === 'profile' ? 'sidebar__item--active' : ''}" data-route="profile">◉ <span>Профиль</span></button>
+      </nav>
+    `;
+
+    sidebar.querySelectorAll<HTMLButtonElement>('[data-route]').forEach(button => {
+      button.addEventListener('click', () => this.navigate(button.dataset.route as Route));
+    });
+
+    const playerMount = document.createElement('div');
+    playerMount.className = 'player-mount';
+
+    const layout = document.createElement('div');
+    layout.className = 'app';
+    layout.append(header, sidebar, page.el, playerMount);
+
+    this.root.replaceChildren(layout);
+
+    // Player is created once per route to keep DOM simple and avoid stale page handlers.
+    const player = new Player();
+    playerMount.append(player.el);
   }
+}
 
-  private async showFavouritePage(): Promise<void> {
-    const page =
-      new FavouritePage(
-        this.root,
-      );
+function elShell(): HTMLElement {
+  const node = document.createElement('div');
+  node.id = 'app-shell';
+  return node;
+}
 
-    this.currentPage = page;
-
-    await page.render();
-  }
-
-  private showProfilePage(): void {
-    const page =
-      new ProfilePage(
-        this.root,
-      );
-
-    this.currentPage = page;
-
-    page.render();
-  }
-
-  private async showAuthPage(): Promise<void> {
-    const page =
-      new AuthPage(this.root);
-
-    this.currentPage = page;
-
-    await page.render();
-  }
-
-  private normalizeRoute(
-    route: string,
-  ): string {
-    if (!route) {
-      return '/';
-    }
-
-    let normalized =
-      route.trim();
-
-    /*
-     * Если передали полный URL,
-     * берём только pathname.
-     */
-
-    try {
-      if (
-        normalized.startsWith(
-          'http://',
-        ) ||
-        normalized.startsWith(
-          'https://',
-        )
-      ) {
-        normalized =
-          new URL(
-            normalized,
-          ).pathname;
-      }
-    } catch {
-      normalized = '/';
-    }
-
-    /*
-     * Убираем query/hash.
-     */
-
-    normalized =
-      normalized.split('?')[0];
-
-    normalized =
-      normalized.split('#')[0];
-
-    /*
-     * Добавляем / в начало.
-     */
-
-    if (
-      !normalized.startsWith('/')
-    ) {
-      normalized =
-        `/${normalized}`;
-    }
-
-    /*
-     * Убираем лишний / в конце.
-     */
-
-    if (
-      normalized.length > 1 &&
-      normalized.endsWith('/')
-    ) {
-      normalized =
-        normalized.slice(0, -1);
-    }
-
-    return normalized;
-  }
+function requirePlayer(): typeof import('./components/Player').Player {
+  // Static ESM import would also work; this wrapper keeps Router self-contained.
+  // The module is already bundled by Vite.
+  throw new Error('PLAYER_IMPORT_PLACEHOLDER');
 }

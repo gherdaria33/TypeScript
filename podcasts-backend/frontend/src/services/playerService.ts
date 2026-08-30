@@ -1,460 +1,160 @@
-import type { Track } from './trackService';
+import type { Track } from '../types';
 
-type PlayerListener = (
-  track: Track | null,
-  isPlaying: boolean,
-) => void;
-
-type ProgressListener = (
-  currentTime: number,
-  duration: number,
-) => void;
+type PlayerListener = (track: Track | null, playing: boolean) => void;
 
 class PlayerService {
-  private audio: HTMLAudioElement;
-
-  private currentTrack: Track | null = null;
-
+  private readonly audio = new Audio();
   private tracks: Track[] = [];
-
   private currentIndex = -1;
-
-  private playerListeners: PlayerListener[] = [];
-
-  private progressListeners: ProgressListener[] =
-    [];
+  private currentSource = '';
+  private listeners = new Set<PlayerListener>();
 
   constructor() {
-    this.audio =
-      new Audio();
-
     this.audio.preload = 'metadata';
 
-    this.audio.volume = 0.8;
-
-    this.audio.addEventListener(
-      'timeupdate',
-      () => {
-        this.notifyProgress();
-      },
-    );
-
-    this.audio.addEventListener(
-      'loadedmetadata',
-      () => {
-        this.notifyProgress();
-      },
-    );
-
-    this.audio.addEventListener(
-      'ended',
-      () => {
-        void this.next();
-      },
-    );
-
-    this.audio.addEventListener(
-      'play',
-      () => {
-        this.notifyPlayer();
-      },
-    );
-
-    this.audio.addEventListener(
-      'pause',
-      () => {
-        this.notifyPlayer();
-      },
-    );
+    this.audio.addEventListener('play', () => this.notify());
+    this.audio.addEventListener('pause', () => this.notify());
+    this.audio.addEventListener('ended', () => this.next());
   }
 
-  setTracks(
-    tracks: Track[],
-  ): void {
-    this.tracks = [...tracks];
-
-    if (
-      this.currentTrack
-    ) {
-      const index =
-        this.tracks.findIndex(
-          (track) =>
-            String(track.id) ===
-            String(
-              this.currentTrack?.id,
-            ),
-        );
-
-      this.currentIndex =
-        index;
-    }
+  setTracks(tracks: Track[]): void {
+    this.tracks = tracks;
   }
 
-  getCurrentTrack(): Track | null {
-    return this.currentTrack;
+  getCurrent(): Track | null {
+    return this.currentIndex >= 0
+      ? this.tracks[this.currentIndex] ?? null
+      : null;
   }
 
   isPlaying(): boolean {
     return !this.audio.paused;
   }
 
-  getCurrentTime(): number {
-    return this.audio.currentTime || 0;
+  getAudio(): HTMLAudioElement {
+    return this.audio;
   }
 
-  getDuration(): number {
-    return (
-      this.audio.duration || 0
-    );
-  }
+  async play(track: Track): Promise<void> {
+    const index = this.tracks.findIndex(item => item.id === track.id);
 
-  getVolume(): number {
-    return this.audio.volume;
-  }
-
-  async play(
-    track?: Track,
-  ): Promise<void> {
-    if (track) {
-      const sameTrack =
-        this.currentTrack &&
-        String(
-          this.currentTrack.id,
-        ) === String(track.id);
-
-      if (!sameTrack) {
-        this.loadTrack(track);
-      }
+    if (index >= 0) {
+      this.currentIndex = index;
     }
 
-    if (!this.currentTrack) {
-      return;
-    }
-
-    const source =
-      this.currentTrack.audioUrl ||
-      this.currentTrack.url;
+    const source = this.decodeAudio(track.encoded_audio);
 
     if (!source) {
       throw new Error(
-        'У этого трека отсутствует аудиофайл.',
+        'В backend у этого трека нет пригодного аудиопотока. Поле encoded_audio содержит демонстрационные данные.'
       );
     }
 
-    try {
-      await this.audio.play();
-    } catch {
-      throw new Error(
-        'Не удалось воспроизвести аудио.',
-      );
+    if (this.currentSource !== source) {
+      this.currentSource = source;
+      this.audio.src = source;
+      this.audio.load();
     }
 
-    this.notifyPlayer();
+    await this.audio.play();
+    this.notify();
   }
 
   pause(): void {
     this.audio.pause();
-
-    this.notifyPlayer();
   }
 
-  async toggle(
-    track?: Track,
-  ): Promise<void> {
-    if (track) {
-      const sameTrack =
-        this.currentTrack &&
-        String(
-          this.currentTrack.id,
-        ) === String(track.id);
-
-      if (
-        sameTrack &&
-        this.isPlaying()
-      ) {
-        this.pause();
-        return;
-      }
-
+  async toggle(track?: Track): Promise<void> {
+    if (track && this.getCurrent()?.id !== track.id) {
       await this.play(track);
       return;
     }
 
-    if (this.isPlaying()) {
-      this.pause();
-      return;
+    if (this.audio.paused) {
+      await this.audio.play();
+    } else {
+      this.audio.pause();
     }
-
-    await this.play();
   }
 
-  loadTrack(
-    track: Track,
-  ): void {
-    this.audio.pause();
+  seek(seconds: number): void {
+    if (!Number.isFinite(this.audio.duration)) return;
 
-    this.currentTrack =
-      track;
+    this.audio.currentTime = Math.max(
+      0,
+      Math.min(this.audio.duration, this.audio.currentTime + seconds)
+    );
+  }
 
-    const index =
-      this.tracks.findIndex(
-        (item) =>
-          String(item.id) ===
-          String(track.id),
-      );
+  seekTo(percent: number): void {
+    if (!Number.isFinite(this.audio.duration)) return;
+    this.audio.currentTime = this.audio.duration * percent;
+  }
+
+  next(): void {
+    if (!this.tracks.length) return;
+
+    this.currentIndex = (this.currentIndex + 1) % this.tracks.length;
+    const track = this.getCurrent();
+
+    if (track) {
+      void this.play(track).catch(error => {
+        console.error(error);
+      });
+    }
+  }
+
+  previous(): void {
+    if (!this.tracks.length) return;
 
     this.currentIndex =
-      index;
+      (this.currentIndex - 1 + this.tracks.length) % this.tracks.length;
 
-    const source =
-      track.audioUrl ||
-      track.url;
+    const track = this.getCurrent();
 
-    if (!source) {
-      this.audio.removeAttribute(
-        'src',
-      );
-
-      this.audio.load();
-
-      this.notifyPlayer();
-
-      return;
+    if (track) {
+      void this.play(track).catch(error => {
+        console.error(error);
+      });
     }
-
-    this.audio.src =
-      source;
-
-    this.audio.load();
-
-    this.notifyPlayer();
-    this.notifyProgress();
   }
 
-  async next(): Promise<void> {
-    if (
-      this.tracks.length === 0
-    ) {
-      return;
-    }
-
-    let nextIndex =
-      this.currentIndex + 1;
-
-    if (
-      nextIndex >=
-      this.tracks.length
-    ) {
-      nextIndex = 0;
-    }
-
-    const nextTrack =
-      this.tracks[nextIndex];
-
-    if (!nextTrack) {
-      return;
-    }
-
-    this.loadTrack(
-      nextTrack,
-    );
-
-    await this.play();
+  subscribe(listener: PlayerListener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 
-  async previous(): Promise<void> {
-    if (
-      this.tracks.length === 0
-    ) {
-      return;
-    }
-
-    /*
-     * Если прошло больше 3 секунд,
-     * Previous сначала возвращает
-     * трек в начало.
-     */
-
-    if (
-      this.audio.currentTime > 3
-    ) {
-      this.seek(0);
-      return;
-    }
-
-    let previousIndex =
-      this.currentIndex - 1;
-
-    if (
-      previousIndex < 0
-    ) {
-      previousIndex =
-        this.tracks.length - 1;
-    }
-
-    const previousTrack =
-      this.tracks[
-        previousIndex
-      ];
-
-    if (!previousTrack) {
-      return;
-    }
-
-    this.loadTrack(
-      previousTrack,
-    );
-
-    await this.play();
-  }
-
-  seek(
-    time: number,
-  ): void {
-    const duration =
-      this.getDuration();
-
-    if (!duration) {
-      return;
-    }
-
-    const safeTime =
-      Math.max(
-        0,
-        Math.min(
-          time,
-          duration,
-        ),
-      );
-
-    this.audio.currentTime =
-      safeTime;
-
-    this.notifyProgress();
-  }
-
-  seekPercent(
-    percent: number,
-  ): void {
-    const duration =
-      this.getDuration();
-
-    if (!duration) {
-      return;
-    }
-
-    const safePercent =
-      Math.max(
-        0,
-        Math.min(
-          percent,
-          100,
-        ),
-      );
-
-    this.seek(
-      duration *
-        (safePercent / 100),
+  private notify(): void {
+    this.listeners.forEach(listener =>
+      listener(this.getCurrent(), this.isPlaying())
     );
   }
 
-  setVolume(
-    volume: number,
-  ): void {
-    const safeVolume =
-      Math.max(
-        0,
-        Math.min(
-          volume,
-          1,
-        ),
-      );
+  private decodeAudio(value?: string): string | null {
+    if (!value) return null;
 
-    this.audio.volume =
-      safeVolume;
+    // Supports a backend value already formatted as a data URL.
+    if (value.startsWith('data:audio/')) {
+      return value;
+    }
+
+    // The supplied backend contains Base64 strings. If those strings
+    // decode to an audio data URL, use it.
+    try {
+      const decoded = atob(value);
+
+      if (decoded.startsWith('data:audio/')) {
+        return decoded;
+      }
+    } catch {
+      return null;
+    }
+
+    // The uploaded backend's demo values decode to ordinary text such as
+    // "Audio data for Eternal Sunset..." rather than actual audio bytes.
+    // Do not pretend such data is playable.
+    return null;
   }
+}
 
-  mute(): void {
-    this.audio.muted = true;
-  }
-
-  unmute(): void {
-    this.audio.muted = false;
-  }
-
-  isMuted(): boolean {
-    return this.audio.muted;
-  }
-
-  onPlayerChange(
-    listener: PlayerListener,
-  ): () => void {
-    this.playerListeners.push(
-      listener,
-    );
-
-    listener(
-      this.currentTrack,
-      this.isPlaying(),
-    );
-
-    return () => {
-      this.playerListeners =
-        this.playerListeners.filter(
-          (item) =>
-            item !== listener,
-        );
-    };
-  }
-
-  onProgress(
-    listener: ProgressListener,
-  ): () => void {
-    this.progressListeners.push(
-      listener,
-    );
-
-    listener(
-      this.getCurrentTime(),
-      this.getDuration(),
-    );
-
-    return () => {
-      this.progressListeners =
-        this.progressListeners.filter(
-          (item) =>
-            item !== listener,
-        );
-    };
-  }
-
-  destroy(): void {
-    this.audio.pause();
-
-    this.audio.removeAttribute(
-      'src',
-    );
-
-    this.audio.load();
-
-    this.playerListeners = [];
-
-    this.progressListeners = [];
-
-    this.currentTrack = null;
-
-    this.tracks = [];
-
-    this.currentIndex = -1;
-  }
-
-  private notifyPlayer(): void {
-    this.playerListeners.forEach(
-      (listener) => {
-        listener(
-          this.currentTrack,
-          this.isPlaying(),
-        );
-      },
-    );
-  }
+export const playerService = new PlayerService();

@@ -1,129 +1,63 @@
-import type { Track } from './trackService';
+const API_BASE = '/api';
 
-const FAVORITES_KEY =
-  'favoriteTracks';
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  token?: string
+): Promise<T> {
+  const headers = new Headers(options.headers);
+  headers.set('Content-Type', 'application/json');
 
-class FavoriteService {
-  private getIds(): string[] {
-    const raw =
-      localStorage.getItem(
-        FAVORITES_KEY,
-      );
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
 
-    if (!raw) {
-      return [];
-    }
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers
+  });
 
+  const text = await response.text();
+  let data: unknown = null;
+
+  if (text) {
     try {
-      const parsed =
-        JSON.parse(raw);
-
-      if (
-        !Array.isArray(parsed)
-      ) {
-        return [];
-      }
-
-      return parsed.map(
-        (id) => String(id),
-      );
+      data = JSON.parse(text) as unknown;
     } catch {
-      return [];
+      data = { message: text };
     }
   }
 
-  private saveIds(
-    ids: string[],
-  ): void {
-    localStorage.setItem(
-      FAVORITES_KEY,
-      JSON.stringify(ids),
-    );
+  if (!response.ok) {
+    const message =
+      typeof data === 'object' &&
+      data !== null &&
+      'message' in data &&
+      typeof data.message === 'string'
+        ? data.message
+        : `Ошибка HTTP ${response.status}`;
+
+    throw new Error(message);
   }
 
-  getFavorites(): string[] {
-    return this.getIds();
-  }
-
-  isFavorite(
-    trackId: number | string,
-  ): boolean {
-    return this.getIds().includes(
-      String(trackId),
-    );
-  }
-
-  async addFavorite(
-    trackId: number | string,
-  ): Promise<void> {
-    const ids =
-      this.getIds();
-
-    const id =
-      String(trackId);
-
-    if (!ids.includes(id)) {
-      ids.push(id);
-
-      this.saveIds(ids);
-    }
-  }
-
-  async removeFavorite(
-    trackId: number | string,
-  ): Promise<void> {
-    const id =
-      String(trackId);
-
-    const ids =
-      this.getIds().filter(
-        (item) =>
-          item !== id,
-      );
-
-    this.saveIds(ids);
-  }
-
-  async toggleFavorite(
-    trackId: number | string,
-  ): Promise<boolean> {
-    if (
-      this.isFavorite(trackId)
-    ) {
-      await this.removeFavorite(
-        trackId,
-      );
-
-      return false;
-    }
-
-    await this.addFavorite(
-      trackId,
-    );
-
-    return true;
-  }
-
-  async getFavoriteTracks(
-    tracks: Track[],
-  ): Promise<Track[]> {
-    const ids =
-      this.getIds();
-
-    return tracks.filter(
-      (track) =>
-        ids.includes(
-          String(track.id),
-        ),
-    );
-  }
-
-  clear(): void {
-    localStorage.removeItem(
-      FAVORITES_KEY,
-    );
-  }
+  return data as T;
 }
 
-export const favoriteService =
-  new FavoriteService();
+export const api = {
+  get: <T>(path: string, token?: string) =>
+    request<T>(path, { method: 'GET' }, token),
+
+  post: <T>(path: string, body: unknown, token?: string) =>
+    request<T>(
+      path,
+      { method: 'POST', body: JSON.stringify(body) },
+      token
+    ),
+
+  delete: <T>(path: string, body: unknown, token?: string) =>
+    request<T>(
+      path,
+      { method: 'DELETE', body: JSON.stringify(body) },
+      token
+    )
+};

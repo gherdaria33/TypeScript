@@ -1,0 +1,42 @@
+.player {
+  position: fixed;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: 100px;
+  display: grid;
+  grid-template-columns: 310px 1fr;
+  align-items: center;
+  gap: 24px;
+  padding: 14px 28px;
+  background: rgba(255,255,255,.96);
+  border-top: 1px solid #e8e8eb;
+  box-shadow: 0 -12px 35px rgba(0,0,0,.04);
+  backdrop-filter: blur(18px);
+}
+.player__info { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.player__cover {
+  flex: 0 0 54px; width: 54px; height: 54px; border-radius: 14px;
+  display: grid; place-items: center; background: #18181b; color: #fff; font-size: 22px;
+}
+.player__title { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player__artist { color: #a1a1aa; font-size: 13px; margin-top: 4px; }
+.player__controls { min-width: 0; }
+.player__buttons { display: flex; align-items: center; justify-content: center; gap: 9px; }
+.player__button {
+  border: 0; background: transparent; color: #52525b; min-width: 34px; height: 34px;
+  border-radius: 10px; font-size: 12px;
+}
+.player__button:hover { background: #f4f4f5; color: #18181b; }
+.player__button--play { width: 42px; height: 42px; border-radius: 50%; background: #18181b; color: #fff; }
+.player__button--play:hover { background: #18181b; color: #fff; }
+.player__timeline { display: flex; align-items: center; gap: 10px; margin-top: 5px; }
+.player__time { color: #a1a1aa; font-size: 11px; width: 34px; }
+.player__range { width: 100%; accent-color: #18181b; }
+
+@media (max-width: 800px) {
+  .player { grid-template-columns: 1fr; gap: 4px; padding: 9px 12px; min-height: 88px; }
+  .player__info { display: none; }
+  .player__buttons { gap: 2px; }
+}
