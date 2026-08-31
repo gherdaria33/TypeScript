@@ -27,8 +27,8 @@ export class Sidebar {
 
     this.el = el('aside.sidebar', [
       el('div.sidebar__brand', [
-        el('span.sidebar__brand-mark', '◒'),
-        el('span.sidebar__brand-text', 'webcast studio')
+        el('span.sidebar__brand-mark', '=>'),
+        el('span.sidebar__brand-text', 'VibeCast Studio')
       ]),
       el('nav.sidebar__nav', [
         button('tracks', '♫', 'Аудиокомпозиции', onTracks),
