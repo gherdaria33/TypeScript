@@ -30,7 +30,7 @@ const login = (req, res) => {
       .json({ message: "произошла ошибка при авторизации - неверные данные" });
   }
 
-  const token = jwt.sign({ username }, secretKey, { expiresIn: "7d" });
+  const token = jwt.sign({ username }, secretKey, { expiresIn: "1h" });
   return res.json({ message: "авторизация прошла успешно", token });
 };
 
