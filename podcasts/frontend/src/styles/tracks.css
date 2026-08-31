@@ -1,26 +1,21 @@
 .tracks-head, .track { display: grid; grid-template-columns: 36px 48px minmax(220px, 1.45fr) minmax(150px, 1fr) 105px 65px 42px 30px; align-items: center; }
-.tracks-head { min-height: 36px; padding: 0 12px; border-bottom: 1px solid #eee; color: #b4b4b5; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.tracks-head { min-height: 36px; padding: 0 12px; border-bottom: 1px solid #eee; color: rgba(164, 164, 164, 1); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
 .track { min-height: 73px; padding: 8px 12px; border-bottom: 1px solid #f0f0f0; background: #fff; cursor: pointer; transition: background .15s ease; }
 .track:hover { background: #fffafa; }
-.track__number { color: #88888a; font-size: 12px; text-align: center; }
+.track__number { color: rgba(23, 23, 23, 1); font-size: 12px; }
 .track__cover { width: 40px; height: 40px; border-radius: 2px; display: grid; place-items: center; overflow: hidden; }
 .track__cover-note { color: #fff; font-size: 20px; text-shadow: 0 1px 2px rgba(0,0,0,.18); }
-.track__cover--1 { background: linear-gradient(145deg, #3d3f42, #777); }
-.track__cover--2 { background: linear-gradient(145deg, #263744, #d7a36e); }
-.track__cover--3 { background: linear-gradient(145deg, #d76c8f, #7a5ed1); border-radius: 50%; }
-.track__cover--4 { background: linear-gradient(145deg, #292a2c, #8e8e8e); }
-.track__cover--5 { background: linear-gradient(145deg, #7b4bb2, #df5b7c); border-radius: 50%; }
-.track__cover--6 { background: linear-gradient(145deg, #6f5c57, #b79b8e); }
 .track__main { min-width: 0; padding-right: 16px; }
-.track__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #666669; font-size: 11px; font-weight: 600; }
-.track__artist { margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #a8a8aa; font-size: 9px; }
-.track__album, .track__date, .track__duration { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #929294; font-size: 10px; }
+.track__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(23, 23, 23, 1); font-size: 11px; font-weight: 600; }
+.track__artist { margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(170, 170, 170, 1); font-size: 9px; }
+.track__album { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(23, 23, 23, 1); font-size: 10px; }
+.track__date, .track__duration { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(170, 170, 170, 1); font-size: 10px; }
 .track__favorite, .track__menu { border: 0; background: transparent; color: #a8a8aa; padding: 5px; font-size: 17px; }
 .track__favorite--active { color: var(--red); }
 .track__favorite:hover { color: var(--red); }
 .track__menu { font-size: 11px; letter-spacing: 1px; }
 .pagination { display: flex; justify-content: center; gap: 6px; margin: 22px 0; }
-.pagination__button { min-width: 30px; height: 30px; border: 1px solid #e3e3e3; border-radius: 3px; background: #fff; color: #888; font-size: 11px; }
+.pagination__button { min-width: 30px; height: 30px; border: 1px solid #e3e3e3; border-radius: 15px; background: #fff; color: #888; font-size: 11px; }
 .pagination__button--active { background: var(--red); color: #fff; border-color: var(--red); }
 
 @media (max-width: 900px) {

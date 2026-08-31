@@ -16,7 +16,11 @@ export class ProfilePage {
         ])
       ]),
       el('section.profile-card', [
-        el('div.profile-card__avatar', (user?.username?.[0] ?? 'U').toUpperCase()),
+        el('img.profile-card__avatar', {
+          src: '/covers/avatar.svg',
+          alt: 'Аватар пользователя',
+        }),
+
         el('div.profile-card__body', [
           el('div.profile-card__label', 'Имя пользователя'),
           el('div.profile-card__name', user?.username ?? 'Пользователь'),

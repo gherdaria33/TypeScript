@@ -52,29 +52,94 @@ export class TrackCard {
           ? 'Убрать из избранного'
           : 'Добавить в избранное',
         onclick: (event: Event) => {
+          event.preventDefault();
           event.stopPropagation();
           onFavorite();
-        }
+        },
       },
       isFavorite ? '♥' : '♡'
     ) as HTMLButtonElement;
-
-    this.el = el('article.track', { onclick: onPlay }, [
-      el('div.track__number', String(index + 1)),
-      coverFor(index),
-      el('div.track__main', [
-        el('div.track__title', track.title || 'Без названия'),
-        el('div.track__artist', track.artist || 'Неизвестный исполнитель')
-      ]),
-      el('div.track__album', track.album || track.title || '—'),
-      el('div.track__date', track.date || `${index + 1} дней назад`),
-      el('div.track__duration', formatDuration(track.duration)),
-      favorite,
-      el('button.track__menu', {
+    this.el = el(
+      'article.track',
+      {
+        onclick: () => {
+          onPlay();
+        },
+      },
+      [
+        // Номер
+        el(
+          'div.track__number',
+          String(index + 1)
+        ),
+        // SVG обложка альбома
+        coverFor(index, track),
+        // Название + исполнитель
+        el(
+          'div.track__main',
+          [
+            el(
+              'div.track__title',
+              track.title || 'Без названия'
+            ),
+            el(
+              'div.track__artist',
+              track.artist ||
+                'Неизвестный исполнитель'
+            ),
+          ]
+        ),
+        // Альбом
+        el(
+          'div.track__album',
+          track.album ||
+            track.title ||
+            '—'
+        ),
+        // Дата
+        el(
+          'div.track__date',
+          track.date ||
+            `${index + 1} дней назад`
+        ),
+        // Избранное
+        this.favoriteButton,
+        // Время
+        el(
+          'div.track__duration',
+          formatDuration(track.duration)
+        ),
+        // Меню
+        el(
+          'button.track__menu',
+          {
         type: 'button',
-        'aria-label': 'Дополнительные действия',
-        onclick: (event: Event) => event.stopPropagation()
-      }, '•••')
-    ]) as HTMLElement;
+            'aria-label':
+              'Дополнительные действия',
+            onclick: (event: Event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            },
+          },
+          '•••'
+        ),
+      ]
+    ) as HTMLElement;
+  }
+  public setFavorite(
+    isFavorite: boolean
+  ): void {
+    this.favoriteButton.textContent =
+      isFavorite ? '♥' : '♡';
+    this.favoriteButton.classList.toggle(
+      'track__favorite--active',
+      isFavorite
+    );
+    this.favoriteButton.setAttribute(
+      'aria-label',
+      isFavorite
+        ? 'Убрать из избранного'
+        : 'Добавить в избранное'
+    );
   }
 }

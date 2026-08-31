@@ -1,41 +1,88 @@
 const API_BASE = '/api';
 
+const TOKEN_KEY = 'audio_player_token';
+
 async function request<T>(
   path: string,
-  options: RequestInit = {},
-  token?: string
+  options: RequestInit = {}
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  headers.set('Content-Type', 'application/json');
 
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
+  // Content-Type нужен только когда отправляем body
+  if (options.body !== undefined) {
+    headers.set(
+      'Content-Type',
+      'application/json'
+    );
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers
-  });
+  // Всегда берём самый свежий токен
+  // непосредственно перед запросом.
+  const token =
+    localStorage.getItem(TOKEN_KEY);
+
+  if (token) {
+    headers.set(
+      'Authorization',
+      `Bearer ${token}`
+    );
+  }
+
+  const response = await fetch(
+    `${API_BASE}${path}`,
+    {
+      ...options,
+      headers,
+    }
+  );
 
   const text = await response.text();
+
   let data: unknown = null;
 
   if (text) {
     try {
-      data = JSON.parse(text) as unknown;
+      data = JSON.parse(text);
     } catch {
-      data = { message: text };
+      data = {
+        message: text,
+      };
     }
   }
 
+  // ============================================
+  // ОШИБКА
+  // ============================================
+
   if (!response.ok) {
-    const message =
+    let message =
+      `Ошибка HTTP ${response.status}`;
+
+    if (
       typeof data === 'object' &&
       data !== null &&
       'message' in data &&
       typeof data.message === 'string'
-        ? data.message
-        : `Ошибка HTTP ${response.status}`;
+    ) {
+      message = data.message;
+    }
+
+    // JWT недействителен
+    if (response.status === 401) {
+      console.error(
+        '401 Unauthorized:',
+        message
+      );
+
+      // Удаляем только недействительный JWT
+      localStorage.removeItem(
+        TOKEN_KEY
+      );
+
+      localStorage.removeItem(
+        'audio_player_user'
+      );
+    }
 
     throw new Error(message);
   }
@@ -43,21 +90,68 @@ async function request<T>(
   return data as T;
 }
 
+// ============================================
+// API
+// ============================================
+
 export const api = {
-  get: <T>(path: string, token?: string) =>
-    request<T>(path, { method: 'GET' }, token),
 
-  post: <T>(path: string, body: unknown, token?: string) =>
-    request<T>(
-      path,
-      { method: 'POST', body: JSON.stringify(body) },
-      token
-    ),
+  // ==========================================
+  // GET
+  // ==========================================
 
-  delete: <T>(path: string, body: unknown, token?: string) =>
-    request<T>(
+  get<T>(
+    path: string
+  ): Promise<T> {
+    return request<T>(
       path,
-      { method: 'DELETE', body: JSON.stringify(body) },
-      token
-    )
+      {
+        method: 'GET',
+      }
+    );
+  },
+
+  // ==========================================
+  // POST
+  // ==========================================
+
+  post<T>(
+    path: string,
+    body?: unknown
+  ): Promise<T> {
+    return request<T>(
+      path,
+      {
+        method: 'POST',
+
+        ...(body !== undefined
+          ? {
+              body: JSON.stringify(body),
+            }
+          : {}),
+      }
+    );
+  },
+
+  // ==========================================
+  // DELETE
+  // ==========================================
+
+  delete<T>(
+    path: string,
+    body?: unknown
+  ): Promise<T> {
+    return request<T>(
+      path,
+      {
+        method: 'DELETE',
+
+        ...(body !== undefined
+          ? {
+              body: JSON.stringify(body),
+            }
+          : {}),
+      }
+    );
+  },
 };
