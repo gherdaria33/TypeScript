@@ -6,73 +6,50 @@ type PlayerListener = (
 ) => void;
 
 class PlayerService {
-  private readonly audio: HTMLAudioElement =
-    new Audio();
+  private readonly audio: HTMLAudioElement = new Audio();
 
   private tracks: Track[] = [];
-
   private currentIndex = -1;
-
   private currentSource = '';
 
-  private listeners =
-    new Set<PlayerListener>();
+  private listeners = new Set<PlayerListener>();
 
   private shuffle = false;
+  private repeat = false;
 
-  // Нужен для отмены предыдущего запуска
   private playRequest = 0;
 
   constructor() {
     this.audio.preload = 'metadata';
 
-    this.audio.addEventListener(
-      'play',
-      () => {
-        this.notify();
-      }
-    );
+    this.audio.addEventListener('play', () => {
+      this.notify();
+    });
 
-    this.audio.addEventListener(
-      'pause',
-      () => {
-        this.notify();
-      }
-    );
+    this.audio.addEventListener('pause', () => {
+      this.notify();
+    });
 
-    this.audio.addEventListener(
-      'ended',
-      () => {
-        this.next();
-      }
-    );
+    // ВАЖНО:
+    // здесь теперь учитывается repeat
+    this.audio.addEventListener('ended', () => {
+      this.handleEnded();
+    });
 
-    this.audio.addEventListener(
-      'error',
-      () => {
-        console.error(
-          'Ошибка audio:',
-          this.audio.error
-        );
-
-        this.notify();
-  }
-    );
+    this.audio.addEventListener('error', () => {
+      console.error('Ошибка audio:', this.audio.error);
+      this.notify();
+    });
   }
 
   // ==================================================
   // TRACKS
   // ==================================================
 
-  setTracks(
-    tracks: Track[]
-  ): void {
+  setTracks(tracks: Track[]): void {
     this.tracks = tracks;
 
-    if (
-      this.currentIndex >=
-      this.tracks.length
-    ) {
+    if (this.currentIndex >= this.tracks.length) {
       this.currentIndex = -1;
     }
 
@@ -80,17 +57,11 @@ class PlayerService {
   }
 
   getCurrent(): Track | null {
-    if (
-      this.currentIndex < 0
-    ) {
+    if (this.currentIndex < 0) {
       return null;
     }
 
-    return (
-      this.tracks[
-        this.currentIndex
-      ] ?? null
-    );
+    return this.tracks[this.currentIndex] ?? null;
   }
 
   // ==================================================
@@ -109,94 +80,60 @@ class PlayerService {
   // PLAY
   // ==================================================
 
-  async play(
-    track: Track
-  ): Promise<void> {
-    const requestId =
-      ++this.playRequest;
+  async play(track: Track): Promise<void> {
+    const requestId = ++this.playRequest;
 
-    const index =
-      this.tracks.findIndex(
-        item =>
-          item.id === track.id
-      );
+    const index = this.tracks.findIndex(
+      item => item.id === track.id
+    );
 
     if (index === -1) {
-      throw new Error(
-        'Трек не найден в списке'
-      );
+      throw new Error('Трек не найден в списке');
     }
 
-    this.currentIndex =
-      index;
+    this.currentIndex = index;
 
-    const source =
-      this.getAudioSource(
-        track.encoded_audio
-      );
+    const source = this.getAudioSource(
+      track.encoded_audio
+    );
 
     if (!source) {
       throw new Error(
-        `Не удалось получить аудио для трека "${track.title || 'Без названия'}". Проверь поле encoded_audio.`
+        `Не удалось получить аудио для трека "${
+          track.title || 'Без названия'
+        }". Проверь поле encoded_audio.`
       );
     }
 
-    // Если это новый источник
-    if (
-      this.currentSource !==
-      source
-    ) {
-      this.currentSource =
-        source;
+    if (this.currentSource !== source) {
+      this.currentSource = source;
 
-      // Останавливаем предыдущий
       this.audio.pause();
-
-      // Устанавливаем новый source
-      this.audio.src =
-        source;
-
-      // Загружаем новый источник
+      this.audio.src = source;
       this.audio.load();
     }
 
-    // Если за это время пользователь
-    // уже выбрал другой трек
-    if (
-      requestId !==
-      this.playRequest
-    ) {
+    if (requestId !== this.playRequest) {
       return;
     }
 
     try {
-    await this.audio.play();
+      await this.audio.play();
 
-      // Проверяем ещё раз
-      if (
-        requestId !==
-        this.playRequest
-      ) {
+      if (requestId !== this.playRequest) {
         return;
       }
 
-    this.notify();
+      this.notify();
     } catch (error) {
-      // Быстрое переключение треков
-      // не должно ломать приложение.
       if (
         error instanceof DOMException &&
-        error.name ===
-          'AbortError'
+        error.name === 'AbortError'
       ) {
         return;
       }
 
-      console.error(
-        'PLAY ERROR:',
-        error
-      );
-
+      console.error('PLAY ERROR:', error);
       throw error;
     }
   }
@@ -217,37 +154,27 @@ class PlayerService {
   // PLAY / PAUSE
   // ==================================================
 
-  async toggle(
-    track?: Track
-  ): Promise<void> {
-    // Если пользователь нажал
-    // на другой трек
+  async toggle(track?: Track): Promise<void> {
     if (
       track &&
-      this.getCurrent()?.id !==
-        track.id
+      this.getCurrent()?.id !== track.id
     ) {
       await this.play(track);
       return;
     }
 
-    // Если трек не выбран
     if (!this.getCurrent()) {
       return;
     }
 
-    if (
-      this.audio.paused
-    ) {
+    if (this.audio.paused) {
       try {
-      await this.audio.play();
-
+        await this.audio.play();
         this.notify();
       } catch (error) {
         if (
           error instanceof DOMException &&
-          error.name ===
-            'AbortError'
+          error.name === 'AbortError'
         ) {
           return;
         }
@@ -265,28 +192,56 @@ class PlayerService {
   }
 
   // ==================================================
+  // END
+  // ==================================================
+
+  private handleEnded(): void {
+    if (!this.tracks.length) {
+      return;
+    }
+
+    // 🔁 ПОВТОР ТЕКУЩЕГО ТРЕКА
+    if (this.repeat) {
+      this.audio.currentTime = 0;
+
+      void this.audio.play().catch(error => {
+        if (
+          error instanceof DOMException &&
+          error.name === 'AbortError'
+        ) {
+          return;
+        }
+
+        console.error(
+          'REPEAT PLAY ERROR:',
+          error
+        );
+      });
+
+      return;
+    }
+
+    // Если Repeat выключен —
+    // обычный переход дальше
+    this.next();
+  }
+
+  // ==================================================
   // NEXT
   // ==================================================
 
   next(): void {
-    if (
-      !this.tracks.length
-    ) {
+    if (!this.tracks.length) {
       return;
     }
 
-    if (
-      this.shuffle
-    ) {
+    if (this.shuffle) {
       this.playRandom();
       return;
     }
 
     this.currentIndex =
-      (
-        this.currentIndex +
-        1
-      ) %
+      (this.currentIndex + 1) %
       this.tracks.length;
 
     this.playCurrent();
@@ -297,25 +252,17 @@ class PlayerService {
   // ==================================================
 
   previous(): void {
-    if (
-      !this.tracks.length
-    ) {
+    if (!this.tracks.length) {
       return;
     }
 
-    if (
-      this.shuffle
-    ) {
+    if (this.shuffle) {
       this.playRandom();
       return;
     }
 
     this.currentIndex =
-      (
-        this.currentIndex -
-        1 +
-        this.tracks.length
-      ) %
+      (this.currentIndex - 1 + this.tracks.length) %
       this.tracks.length;
 
     this.playCurrent();
@@ -326,62 +273,49 @@ class PlayerService {
   // ==================================================
 
   private playCurrent(): void {
-    const track =
-      this.getCurrent();
+    const track = this.getCurrent();
 
     if (!track) {
       return;
     }
 
-    void this.play(track).catch(
-      error => {
-        if (
-          error instanceof DOMException &&
-          error.name ===
-            'AbortError'
-        ) {
-          return;
-        }
-
-        console.error(
-          'PLAYER ERROR:',
-          error
-        );
+    void this.play(track).catch(error => {
+      if (
+        error instanceof DOMException &&
+        error.name === 'AbortError'
+      ) {
+        return;
       }
-    );
-    }
+
+      console.error(
+        'PLAYER ERROR:',
+        error
+      );
+    });
+  }
 
   // ==================================================
   // RANDOM
   // ==================================================
 
   private playRandom(): void {
-    if (
-      this.tracks.length === 1
-    ) {
+    if (this.tracks.length === 1) {
       this.currentIndex = 0;
-
       this.playCurrent();
-
       return;
     }
 
-    let randomIndex =
-      this.currentIndex;
+    let randomIndex = this.currentIndex;
 
     while (
-      randomIndex ===
-      this.currentIndex
+      randomIndex === this.currentIndex
     ) {
-      randomIndex =
-        Math.floor(
-          Math.random() *
-            this.tracks.length
-        );
+      randomIndex = Math.floor(
+        Math.random() * this.tracks.length
+      );
     }
 
-    this.currentIndex =
-      randomIndex;
+    this.currentIndex = randomIndex;
 
     this.playCurrent();
   }
@@ -390,18 +324,13 @@ class PlayerService {
   // SHUFFLE
   // ==================================================
 
-  setShuffle(
-    enabled: boolean
-  ): void {
-    this.shuffle =
-      enabled;
-
+  setShuffle(enabled: boolean): void {
+    this.shuffle = enabled;
     this.notify();
   }
 
   toggleShuffle(): boolean {
-    this.shuffle =
-      !this.shuffle;
+    this.shuffle = !this.shuffle;
 
     this.notify();
 
@@ -413,74 +342,71 @@ class PlayerService {
   }
 
   // ==================================================
+  // REPEAT 🔁
+  // ==================================================
+
+  setRepeat(enabled: boolean): void {
+    this.repeat = enabled;
+
+    this.notify();
+  }
+
+  toggleRepeat(): boolean {
+    this.repeat = !this.repeat;
+
+    this.notify();
+
+    return this.repeat;
+  }
+
+  isRepeat(): boolean {
+    return this.repeat;
+  }
+
+  // ==================================================
   // SEEK
   // ==================================================
 
-  seek(
-    seconds: number
-  ): void {
-    if (
-      !Number.isFinite(
-        this.audio.duration
-      )
-    ) {
+  seek(seconds: number): void {
+    if (!Number.isFinite(this.audio.duration)) {
       return;
     }
 
     const nextTime =
-      this.audio.currentTime +
-      seconds;
+      this.audio.currentTime + seconds;
 
-    this.audio.currentTime =
-      Math.max(
-        0,
-        Math.min(
-          this.audio.duration,
-          nextTime
-        )
-      );
+    this.audio.currentTime = Math.max(
+      0,
+      Math.min(
+        this.audio.duration,
+        nextTime
+      )
+    );
   }
 
-  seekTo(
-    percent: number
-  ): void {
-    if (
-      !Number.isFinite(
-        this.audio.duration
-      )
-    ) {
+  seekTo(percent: number): void {
+    if (!Number.isFinite(this.audio.duration)) {
       return;
     }
 
-    const safePercent =
-      Math.max(
-        0,
-        Math.min(
-          1,
-          percent
-        )
-      );
+    const safePercent = Math.max(
+      0,
+      Math.min(1, percent)
+    );
 
     this.audio.currentTime =
-      this.audio.duration *
-      safePercent;
+      this.audio.duration * safePercent;
   }
 
   // ==================================================
   // VOLUME
   // ==================================================
 
-  setVolume(
-    value: number
-  ): void {
-    this.audio.volume =
-      Math.max(
-        0,
-        Math.min(
-          1,
-          value
-        )
-      );
+  setVolume(value: number): void {
+    this.audio.volume = Math.max(
+      0,
+      Math.min(1, value)
+    );
   }
 
   getVolume(): number {
@@ -494,21 +420,15 @@ class PlayerService {
   subscribe(
     listener: PlayerListener
   ): () => void {
-    this.listeners.add(
-      listener
-    );
+    this.listeners.add(listener);
 
-    // Сразу передаём
-    // текущее состояние
     listener(
       this.getCurrent(),
       this.isPlaying()
     );
 
     return () => {
-      this.listeners.delete(
-        listener
-      );
+      this.listeners.delete(listener);
     };
   }
 
@@ -517,20 +437,12 @@ class PlayerService {
   // ==================================================
 
   private notify(): void {
-    const track =
-      this.getCurrent();
+    const track = this.getCurrent();
+    const playing = this.isPlaying();
 
-    const playing =
-      this.isPlaying();
-
-    this.listeners.forEach(
-      listener => {
-        listener(
-          track,
-          playing
-        );
-      }
-    );
+    this.listeners.forEach(listener => {
+      listener(track, playing);
+    });
   }
 
   // ==================================================
@@ -544,76 +456,48 @@ class PlayerService {
       return null;
     }
 
-    const cleanValue =
-      value.trim();
+    const cleanValue = value.trim();
 
     if (!cleanValue) {
       return null;
     }
 
-    // ------------------------------------------
-    // Уже готовый data URL
-    // ------------------------------------------
-
+    // data:audio/...
     if (
-      cleanValue.startsWith(
-        'data:audio/'
-      )
+      cleanValue.startsWith('data:audio/')
     ) {
       return cleanValue;
     }
 
-    // ------------------------------------------
-    // Обычная ссылка на audio
-    // ------------------------------------------
-
+    // Обычная ссылка
     if (
-      cleanValue.startsWith(
-        'http://'
-      ) ||
-      cleanValue.startsWith(
-        'https://'
-      ) ||
-      cleanValue.startsWith(
-        '/'
-      )
+      cleanValue.startsWith('http://') ||
+      cleanValue.startsWith('https://') ||
+      cleanValue.startsWith('/')
     ) {
       return cleanValue;
     }
 
-    // ------------------------------------------
     // Base64
-    // ------------------------------------------
-
     try {
-      const decoded =
-        atob(cleanValue);
+      const decoded = atob(cleanValue);
 
-      // Base64 внутри содержит
-      // data:audio/...
       if (
-        decoded.startsWith(
-          'data:audio/'
-        )
+        decoded.startsWith('data:audio/')
       ) {
         return decoded;
       }
 
-      const bytes =
-        Uint8Array.from(
-          decoded,
-          char =>
-            char.charCodeAt(0)
-        );
+      const bytes = Uint8Array.from(
+        decoded,
+        char => char.charCodeAt(0)
+      );
 
-      if (
-        bytes.length >= 4
-      ) {
-        // MP3 / MPEG
+      if (bytes.length >= 4) {
+        // MP3
         if (
           bytes[0] === 0xff &&
-          (bytes[1] & 0xe0) ===
-            0xe0
+          (bytes[1] & 0xe0) === 0xe0
         ) {
           return this.toDataUrl(
             bytes,
@@ -623,15 +507,12 @@ class PlayerService {
 
         // WAV
         if (
-          this.startsWithBytes(
-            bytes,
-            [
-              0x52,
-              0x49,
-              0x46,
-              0x46,
-            ]
-          )
+          this.startsWithBytes(bytes, [
+            0x52,
+            0x49,
+            0x46,
+            0x46,
+          ])
         ) {
           return this.toDataUrl(
             bytes,
@@ -641,15 +522,12 @@ class PlayerService {
 
         // OGG
         if (
-          this.startsWithBytes(
-            bytes,
-            [
-              0x4f,
-              0x67,
-              0x67,
-              0x53,
-            ]
-          )
+          this.startsWithBytes(bytes, [
+            0x4f,
+            0x67,
+            0x67,
+            0x53,
+          ])
         ) {
           return this.toDataUrl(
             bytes,
@@ -659,15 +537,12 @@ class PlayerService {
 
         // FLAC
         if (
-          this.startsWithBytes(
-            bytes,
-            [
-              0x66,
-              0x4c,
-              0x61,
-              0x43,
-            ]
-          )
+          this.startsWithBytes(bytes, [
+            0x66,
+            0x4c,
+            0x61,
+            0x43,
+          ])
         ) {
           return this.toDataUrl(
             bytes,
@@ -676,7 +551,7 @@ class PlayerService {
         }
       }
     } catch {
-      // Это не Base64.
+      // Не Base64
     }
 
     return null;
@@ -699,14 +574,13 @@ class PlayerService {
       i < bytes.length;
       i += chunkSize
     ) {
-      const chunk =
-        bytes.subarray(
-          i,
-          Math.min(
-            i + chunkSize,
-            bytes.length
-          )
-        );
+      const chunk = bytes.subarray(
+        i,
+        Math.min(
+          i + chunkSize,
+          bytes.length
+        )
+      );
 
       binary += String.fromCharCode(
         ...chunk

@@ -1,8 +1,10 @@
 import { el } from 'redom';
+
 import { playerService } from '../services/playerService';
-import type { Track } from '../types';
 import { favoriteService } from '../services/favoriteService';
 import { authService } from '../services/authService';
+
+import type { Track } from '../types';
 
 function formatTime(value: number): string {
   if (!Number.isFinite(value) || value < 0) {
@@ -18,30 +20,12 @@ function formatTime(value: number): string {
   return `${minutes}:${seconds}`;
 }
 
-function getCover(track: Track | null): string {
-  if (!track) {
-    return '/covers/track1.svg';
-  }
-
-  const item = track as Track & {
-    cover?: string;
-    coverUrl?: string;
-    image?: string;
-    imageUrl?: string;
-  };
-
-  if (item.cover) return item.cover;
-  if (item.coverUrl) return item.coverUrl;
-  if (item.image) return item.image;
-  if (item.imageUrl) return item.imageUrl;
-
-  const id = Number(track.id) || 1;
-  const number = ((id - 1) % 6) + 1;
-
-  return `/covers/track${number}.svg`;
-}
-
-function icon(
+/**
+ * Создание SVG/IMG иконки.
+ * Используется только для остальных кнопок.
+ * Play/Pause работают через обычные эмодзи.
+ */
+function createIcon(
   src: string,
   alt: string
 ): HTMLImageElement {
@@ -55,30 +39,78 @@ function icon(
   ) as HTMLImageElement;
 }
 
+/**
+ * Получение обложки трека.
+ */
+function getCover(track: Track | null): string {
+  if (!track) {
+    return '/covers/track1.svg';
+  }
+
+  const item = track as Track & {
+    cover?: string;
+    coverUrl?: string;
+    image?: string;
+    imageUrl?: string;
+  };
+
+  if (item.cover) {
+    return item.cover;
+  }
+
+  if (item.coverUrl) {
+    return item.coverUrl;
+  }
+
+  if (item.image) {
+    return item.image;
+  }
+
+  if (item.imageUrl) {
+    return item.imageUrl;
+  }
+
+  const id = Number(track.id) || 1;
+
+  const number = ((id - 1) % 6) + 1;
+
+  return `/covers/track${number}.svg`;
+}
+
 export class Player {
   public readonly el: HTMLElement;
 
   private readonly cover: HTMLImageElement;
+
   private readonly title: HTMLElement;
-  private readonly favoriteButton: HTMLButtonElement;
+
   private readonly artist: HTMLElement;
 
   private readonly playButton: HTMLButtonElement;
 
   private readonly currentTime: HTMLElement;
+
   private readonly duration: HTMLElement;
+
   private readonly range: HTMLInputElement;
+
+  private readonly volumeRange: HTMLInputElement;
+
+  private readonly volumeIcon: HTMLElement;
 
   private readonly shuffleButton: HTMLButtonElement;
 
-  private readonly volumeRange: HTMLInputElement;
-  private readonly volumeIcon: HTMLElement;
+  private readonly repeatButton: HTMLButtonElement;
+
+  private readonly favoriteButton: HTMLButtonElement;
+
+  private favorites = new Set<number>();
 
   constructor() {
     const audio = playerService.getAudio();
 
     // ==================================================
-    // ОБЛОЖКА
+    // COVER
     // ==================================================
 
     this.cover = el(
@@ -86,11 +118,12 @@ export class Player {
       {
         src: '/covers/track1.svg',
         alt: 'Обложка трека',
+        draggable: false,
       }
     ) as HTMLImageElement;
 
     // ==================================================
-    // НАЗВАНИЕ
+    // TITLE
     // ==================================================
 
     this.title = el(
@@ -99,25 +132,8 @@ export class Player {
     ) as HTMLElement;
 
     // ==================================================
-    // ИСПОЛНИТЕЛЬ
+    // ARTIST
     // ==================================================
-
-   this.favoriteButton = el(
-  'button.player__favorite',
-  {
-      type: 'button',
-    'aria-label': 'Добавить в избранное',
-    title: 'Добавить в избранное',
-
-    onclick: (event: Event) => {
-      event.preventDefault();
-      event.stopPropagation();
-
-      void this.toggleFavorite();
-    },
-  },
-  '❤'
-) as HTMLButtonElement;
 
     this.artist = el(
       'div.player__artist',
@@ -125,24 +141,51 @@ export class Player {
     ) as HTMLElement;
 
     // ==================================================
-    // PREVIOUS
+    // FAVORITE
     // ==================================================
 
-    const previousButton = el(
-      'button.player__button',
+    this.favoriteButton = el(
+      'button.player__favorite',
       {
-      type: 'button',
-      title: 'Предыдущий трек',
-        'aria-label': 'Предыдущий трек',
+        type: 'button',
 
-        onclick: () => {
-          playerService.previous();
+        'aria-label': 'Добавить в избранное',
+
+        title: 'Добавить в избранное',
+
+        onclick: (event: Event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          void this.toggleFavorite();
         },
       },
 
-      icon(
-        '/covers/SkipBack.svg',
-        'Предыдущий трек'
+      '♡'
+    ) as HTMLButtonElement;
+
+    this.shuffleButton = el(
+      'button.player__button.player__shuffle',
+      {
+        type: 'button',
+
+        title: 'Случайный порядок',
+
+        'aria-label': 'Случайный порядок',
+
+        'aria-pressed': 'false',
+
+        onclick: () => {
+          const active =
+            playerService.toggleShuffle();
+
+          this.updateShuffle(active);
+        },
+      },
+
+      createIcon(
+        '/covers/Shuffle.svg',
+        'Перемешать'
       )
     ) as HTMLButtonElement;
 
@@ -154,17 +197,19 @@ export class Player {
       'button.player__button',
       {
         type: 'button',
-        title: 'Перемотать назад',
-        'aria-label': 'Перемотать назад',
+
+        title: 'Назад на 10 секунд',
+
+        'aria-label': 'Назад на 10 секунд',
 
         onclick: () => {
           playerService.seek(-10);
         },
       },
 
-      icon(
+      createIcon(
         '/covers/SkipBack.svg',
-        'Перемотать назад'
+        'Назад'
       )
     ) as HTMLButtonElement;
 
@@ -172,38 +217,36 @@ export class Player {
     // PLAY / PAUSE
     // ==================================================
 
-    // ==================================================
-// PLAY / PAUSE
-// ==================================================
+    this.playButton = el(
+      'button.player__button.player__button--play',
+      {
+        type: 'button',
 
-this.playButton = el(
-  'button.player__button.player__button--play',
-  {
-    type: 'button',
-    title: 'Воспроизвести',
-    'aria-label': 'Воспроизвести',
+        title: 'Воспроизвести',
 
-    onclick: () => {
-      void playerService
-        .toggle()
-        .catch((error) => {
-          if (
-            error instanceof DOMException &&
-            error.name === 'AbortError'
-          ) {
-            return;
-          }
+        'aria-label': 'Воспроизвести',
 
-          console.error(
-            'Ошибка воспроизведения:',
-            error
-          );
-        });
-    },
-  },
+        onclick: () => {
+          void playerService
+            .toggle()
+            .catch((error: unknown) => {
+              if (
+                error instanceof DOMException &&
+                error.name === 'AbortError'
+              ) {
+                return;
+              }
 
-  '▶️'
-) as HTMLButtonElement;
+              console.error(
+                'Ошибка воспроизведения:',
+                error
+              );
+            });
+        },
+      },
+
+      '▶️'
+    ) as HTMLButtonElement;
 
     // ==================================================
     // FORWARD
@@ -213,70 +256,61 @@ this.playButton = el(
       'button.player__button',
       {
         type: 'button',
-        title: 'Перемотать вперёд',
-        'aria-label': 'Перемотать вперёд',
+
+        title: 'Вперёд на 10 секунд',
+
+        'aria-label': 'Вперёд на 10 секунд',
 
         onclick: () => {
           playerService.seek(10);
         },
       },
 
-      icon(
-        '/covers/Skip.svg',
-        'Перемотать вперёд'
+      createIcon(
+        '/covers/SkipForward.svg',
+        'Вперёд'
       )
     ) as HTMLButtonElement;
 
     // ==================================================
-    // NEXT
+    // REPEAT
     // ==================================================
 
-    const nextButton = el(
-      'button.player__button',
+    this.repeatButton = el(
+      'button.player__button.player__repeat',
       {
-      type: 'button',
-      title: 'Следующий трек',
-        'aria-label': 'Следующий трек',
+        type: 'button',
 
-        onclick: () => {
-          playerService.next();
-        },
-      },
+        title: 'Повторять трек',
 
-      icon(
-        '/covers/Skip.svg',
-        'Следующий трек'
-      )
-    ) as HTMLButtonElement;
+        'aria-label': 'Повторять трек',
 
-    // ==================================================
-    // SHUFFLE
-    // ==================================================
-
-    this.shuffleButton = el(
-      'button.player__button.player__shuffle',
-      {
-      type: 'button',
-        title: 'Случайный порядок',
-        'aria-label': 'Случайный порядок',
         'aria-pressed': 'false',
 
         onclick: () => {
           const active =
-            playerService.toggleShuffle();
+            playerService.toggleRepeat();
 
-          this.updateShuffle(active);
+          this.repeatButton.classList.toggle(
+            'player__button--active',
+            active
+          );
+
+          this.repeatButton.setAttribute(
+            'aria-pressed',
+            String(active)
+          );
         },
       },
 
-      icon(
-        '/covers/Shuffle.svg',
-        'Случайный порядок'
+      createIcon(
+        '/covers/Repeat.svg',
+        'Повторять'
       )
     ) as HTMLButtonElement;
 
     // ==================================================
-    // TIME
+    // CURRENT TIME
     // ==================================================
 
     this.currentTime = el(
@@ -284,23 +318,32 @@ this.playButton = el(
       '0:00'
     ) as HTMLElement;
 
+    // ==================================================
+    // DURATION
+    // ==================================================
+
     this.duration = el(
       'span.player__time',
       '0:00'
     ) as HTMLElement;
 
     // ==================================================
-    // PROGRESS
+    // PROGRESS RANGE
     // ==================================================
 
     this.range = el(
       'input.player__range',
       {
-      type: 'range',
-      min: '0',
-      max: '100',
-      value: '0',
-      step: '0.1',
+        type: 'range',
+
+        min: '0',
+
+        max: '100',
+
+        value: '0',
+
+        step: '0.1',
+
         'aria-label': 'Позиция трека',
 
         oninput: () => {
@@ -324,17 +367,23 @@ this.playButton = el(
       'input.player__volume-range',
       {
         type: 'range',
+
         min: '0',
+
         max: '1',
+
         step: '0.01',
+
         value: String(audio.volume),
+
         'aria-label': 'Громкость',
 
         oninput: () => {
-          const value =
-            Number(this.volumeRange.value);
+          const value = Number(
+            this.volumeRange.value
+          );
 
-          audio.volume = value;
+          playerService.setVolume(value);
 
           this.updateVolumeIcon(value);
         },
@@ -342,7 +391,7 @@ this.playButton = el(
     ) as HTMLInputElement;
 
     // ==================================================
-    // AUDIO EVENTS
+    // AUDIO TIME UPDATE
     // ==================================================
 
     audio.addEventListener(
@@ -358,15 +407,18 @@ this.playButton = el(
           this.duration.textContent =
             formatTime(audio.duration);
 
-          this.range.value =
-            String(
-              (audio.currentTime /
-                audio.duration) *
-                100
-            );
-      }
+          this.range.value = String(
+            (audio.currentTime /
+              audio.duration) *
+              100
+          );
+        }
       }
     );
+
+    // ==================================================
+    // METADATA
+    // ==================================================
 
     audio.addEventListener(
       'loadedmetadata',
@@ -375,6 +427,10 @@ this.playButton = el(
           formatTime(audio.duration);
       }
     );
+
+    // ==================================================
+    // VOLUME EVENT
+    // ==================================================
 
     audio.addEventListener(
       'volumechange',
@@ -393,56 +449,70 @@ this.playButton = el(
     // ==================================================
 
     playerService.subscribe(
-  (
-    track: Track | null,
-    playing: boolean
-  ) => {
-      if (track) {
-      this.title.textContent =
-        track.title || 'Без названия';
+      (
+        track: Track | null,
+        playing: boolean
+      ) => {
+        if (track) {
+          // Название
+          this.title.textContent =
+            track.title || 'Без названия';
 
-      this.artist.textContent =
-        track.artist ||
-        'Неизвестный исполнитель';
+          // Исполнитель
+          this.artist.textContent =
+            track.artist ||
+            'Неизвестный исполнитель';
 
-      this.cover.src =
-        getCover(track);
+          // Обложка
+          this.cover.src =
+            getCover(track);
 
-      this.cover.alt =
-        track.album ||
-        track.title ||
-        'Обложка';
+          this.cover.alt =
+            track.album ||
+            track.title ||
+            'Обложка';
 
-      this.currentTime.textContent =
-        '0:00';
+          // Сбрасываем время при новом треке
+          this.currentTime.textContent =
+            '0:00';
 
-      this.duration.textContent =
-        '0:00';
+          this.duration.textContent =
+            '0:00';
 
-      this.range.value = '0';
-    }
+          this.range.value = '0';
 
+          // Обновляем сердце
+          this.updateFavorite(track.id);
+        }
 
-    this.playButton.textContent =
-      playing ? '⏸ ' : '▶';
+        // ==================================================
+        // PLAY / PAUSE EMOJI
+        // ==================================================
 
-    this.playButton.setAttribute(
-      'aria-label',
-      playing
-        ? 'Пауза'
-        : 'Воспроизвести'
+        this.playButton.textContent =
+          playing ? '⏸' : '▶';
+
+        this.playButton.setAttribute(
+          'aria-label',
+          playing
+            ? 'Пауза'
+            : 'Воспроизвести'
+        );
+
+        this.playButton.title =
+          playing
+            ? 'Пауза'
+            : 'Воспроизвести';
+
+        // ==================================================
+        // SHUFFLE
+        // ==================================================
+
+        this.updateShuffle(
+          playerService.isShuffle()
+        );
+      }
     );
-
-    this.playButton.title =
-      playing
-        ? 'Пауза'
-        : 'Воспроизвести';
-
-    this.updateShuffle(
-      playerService.isShuffle()
-    );
-  }
-);
 
     // ==================================================
     // HTML
@@ -451,55 +521,66 @@ this.playButton = el(
     this.el = el(
       'footer.player',
       [
+        // LEFT
         el(
           'div.player__info',
           [
             this.cover,
 
             el(
-          'div.player__track-info',
-          [
-           el(
-             'div.player__title-row',
-             [
-                this.title,
-               this.favoriteButton,
+              'div.player__track-info',
+              [
+                // Название + сердце В ОДНОЙ СТРОКЕ
+                el(
+                  'div.player__title-row',
+                  [
+                    this.title,
+                    this.favoriteButton,
+                  ]
+                ),
+
+                this.artist,
               ]
-             ),
-             this.artist,
-            ]
-           )
+            ),
           ]
         ),
 
+        // CENTER
         el(
           'div.player__controls',
           [
+            // BUTTONS
             el(
               'div.player__buttons',
               [
-                previousButton,
-                rewindButton,
-                this.playButton,
-                forwardButton,
-                nextButton,
                 this.shuffleButton,
+
+                rewindButton,
+
+                this.playButton,
+
+                forwardButton,
+
+                this.repeatButton,
               ]
             ),
 
+            // TIMELINE
             el(
               'div.player__timeline',
               [
-          this.currentTime,
+                this.currentTime,
 
-          this.range,
+                this.range,
 
                 this.duration,
 
+                // VOLUME
                 el(
                   'div.player__volume',
                   [
                     this.volumeIcon,
+
                     this.volumeRange,
                   ]
                 ),
@@ -511,55 +592,146 @@ this.playButton = el(
     ) as HTMLElement;
 
     // ==================================================
-    // KEYBOARD
+    // LOAD FAVORITES
     // ==================================================
 
-    window.addEventListener(
-      'keydown',
-      (event: KeyboardEvent) => {
-        if (
-          event.target instanceof
-          HTMLInputElement
-        ) {
-          return;
-        }
-
-        if (
-          event.code === 'ArrowLeft'
-        ) {
-          playerService.seek(-10);
-        }
-
-        if (
-          event.code === 'ArrowRight'
-        ) {
-          playerService.seek(10);
-        }
-
-        if (
-          event.code === 'Space'
-        ) {
-        event.preventDefault();
-
-          void playerService
-            .toggle()
-            .catch((error) => {
-              if (
-                error instanceof DOMException &&
-                error.name === 'AbortError'
-              ) {
-                return;
-      }
-
-              console.error(
-                'Ошибка воспроизведения:',
-                error
-              );
-            });
-        }
-      }
-    );
+    void this.loadFavorites();
   }
+
+  // ====================================================
+  // LOAD FAVORITES
+  // ====================================================
+
+  private async loadFavorites(): Promise<void> {
+    if (!authService.isAuthenticated()) {
+      this.favorites.clear();
+      return;
+    }
+
+    try {
+      const tracks =
+        await favoriteService.getFavorites();
+
+      this.favorites = new Set(
+        tracks.map(
+          (track) => Number(track.id)
+        )
+      );
+
+      const current =
+        playerService.getCurrent();
+
+      if (current) {
+        this.updateFavorite(
+          Number(current.id)
+        );
+      }
+    } catch (error) {
+      console.error(
+        'Не удалось загрузить избранное:',
+        error
+      );
+    }
+  }
+
+  // ====================================================
+  // TOGGLE FAVORITE
+  // ====================================================
+
+  private async toggleFavorite(): Promise<void> {
+    const track =
+      playerService.getCurrent();
+
+    if (!track) {
+      return;
+    }
+
+    if (!authService.isAuthenticated()) {
+      console.error(
+        'Необходима авторизация'
+      );
+
+      return;
+    }
+
+    const trackId =
+      Number(track.id);
+
+    const isFavorite =
+      this.favorites.has(trackId);
+
+    this.favoriteButton.disabled = true;
+
+    try {
+      if (isFavorite) {
+        // DELETE /api/favorites
+        await favoriteService.remove(
+          trackId
+        );
+
+        this.favorites.delete(
+          trackId
+        );
+      } else {
+        // POST /api/favorites
+        await favoriteService.add(
+          trackId
+        );
+
+        this.favorites.add(
+          trackId
+        );
+      }
+
+      // Меняем сердце только после
+      // успешного ответа сервера.
+      this.updateFavorite(trackId);
+    } catch (error) {
+      console.error(
+        'Ошибка избранного:',
+        error
+      );
+    } finally {
+      this.favoriteButton.disabled = false;
+    }
+  }
+
+  // ====================================================
+  // UPDATE FAVORITE
+  // ====================================================
+
+  private updateFavorite(
+    trackId: number
+  ): void {
+    const active =
+      this.favorites.has(
+        Number(trackId)
+      );
+
+    this.favoriteButton.textContent =
+      active ? '❤' : '♡';
+
+    this.favoriteButton.classList.toggle(
+      'player__favorite--active',
+      active
+    );
+
+    this.favoriteButton.setAttribute(
+      'aria-label',
+      active
+        ? 'Убрать из избранного'
+        : 'Добавить в избранное'
+    );
+
+    this.favoriteButton.title =
+      active
+        ? 'Убрать из избранного'
+        : 'Добавить в избранное';
+  }
+
+  // ====================================================
+  // SHUFFLE
+  // ====================================================
 
   private updateShuffle(
     active: boolean
@@ -575,63 +747,28 @@ this.playButton = el(
     );
   }
 
+  // ====================================================
+  // VOLUME ICON
+  // ====================================================
+
   private updateVolumeIcon(
     value: number
   ): void {
     if (value <= 0) {
-      this.volumeIcon.textContent = '🔇';
+      this.volumeIcon.textContent =
+        '🔇';
+
       return;
     }
 
     if (value < 0.5) {
-      this.volumeIcon.textContent = '🔉';
+      this.volumeIcon.textContent =
+        '🔉';
+
       return;
     }
 
-    this.volumeIcon.textContent = '🔊';
-  }
-
- private async toggleFavorite(): Promise<void> {
-  const track = playerService.getCurrent();
-
-  if (!track) {
-    console.log('Трек не выбран');
-    return;
-  }
-
-  if (!authService.isAuthenticated()) {
-    console.log('Пользователь не авторизован');
-    return;
-  }
-
-  const active =
-      this.favoriteButton.classList.contains(
-        'player__favorite--active'
-      );
-
-  try {
-    if (active) {
-      await favoriteService.remove(track.id);
-
-      this.favoriteButton.textContent = '(❤';
-
-      this.favoriteButton.classList.remove(
-        'player__favorite--active'
-      );
-    } else {
-      await favoriteService.add(track.id);
-
-      this.favoriteButton.textContent = '♥';
-
-      this.favoriteButton.classList.add(
-        'player__favorite--active'
-      );
-    }
-  } catch (error) {
-    console.error(
-      'Ошибка избранного:',
-      error
-    );
-  }
+    this.volumeIcon.textContent =
+      '🔊';
   }
 }
