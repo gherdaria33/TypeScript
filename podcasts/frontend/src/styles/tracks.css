@@ -1,0 +1,31 @@
+.tracks-head, .track { display: grid; grid-template-columns: 36px 48px minmax(220px, 1.45fr) minmax(150px, 1fr) 105px 65px 42px 30px; align-items: center; }
+.tracks-head { min-height: 36px; padding: 0 12px; border-bottom: 1px solid #eee; color: rgba(164, 164, 164, 1); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.track { min-height: 73px; padding: 8px 12px; border-bottom: 1px solid #f0f0f0; background: #fff; cursor: pointer; transition: background .15s ease; }
+.track:hover { background: #fffafa; }
+.track__number { color: rgba(23, 23, 23, 1); font-size: 12px; }
+.track__cover { width: 40px; height: 40px; border-radius: 2px; display: grid; place-items: center; overflow: hidden; }
+.track__cover-note { color: #fff; font-size: 20px; text-shadow: 0 1px 2px rgba(0,0,0,.18); }
+.track__main { min-width: 0; padding-right: 16px; }
+.track__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(23, 23, 23, 1); font-size: 11px; font-weight: 600; }
+.track__artist { margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(170, 170, 170, 1); font-size: 9px; }
+.track__album { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(23, 23, 23, 1); font-size: 10px; }
+.track__date, .track__duration { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(170, 170, 170, 1); font-size: 10px; }
+.track__favorite, .track__menu { border: 0; background: transparent; color: #a8a8aa; padding: 5px; font-size: 17px; }
+.track__favorite--active { color: var(--red); }
+.track__favorite:hover { color: var(--red); }
+.track__menu { font-size: 11px; letter-spacing: 1px; }
+.pagination { display: flex; justify-content: center; gap: 6px; margin: 22px 0; }
+.pagination__button { min-width: 30px; height: 30px; border: 1px solid #e3e3e3; border-radius: 15px; background: #fff; color: #888; font-size: 11px; }
+.pagination__button--active { background: var(--red); color: #fff; border-color: var(--red); }
+
+@media (max-width: 900px) {
+  .tracks-head, .track { grid-template-columns: 28px 43px minmax(160px, 1fr) 40px 34px; }
+  .track__album, .track__date, .track__duration, .tracks-head span:nth-child(4), .tracks-head span:nth-child(5), .tracks-head span:nth-child(6) { display: none; }
+}
+@media (max-width: 700px) {
+  .tracks-head { display: none; }
+  .track { grid-template-columns: 26px 42px minmax(0, 1fr) 35px; min-height: 70px; padding: 8px 5px; }
+  .track__menu { display: none; }
+  .track__cover { width: 38px; height: 38px; }
+  .track__title { font-size: 11px; }
+}
