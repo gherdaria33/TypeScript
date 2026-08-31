@@ -1,22 +1,38 @@
 import { el } from 'redom';
 import type { Track } from '../types';
-
 function formatDuration(seconds?: number): string {
-  if (!seconds || !Number.isFinite(seconds)) return '5:15';
-  const minutes = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
+  if (
+    seconds === undefined ||
+    seconds === null ||
+    !Number.isFinite(Number(seconds))
+  ) {
+    return '5:15';
+  }
+  const totalSeconds = Number(seconds);
+  const minutes = Math.floor(totalSeconds / 60);
+  const secs = Math.floor(totalSeconds % 60)
+    .toString()
+    .padStart(2, '0');
   return `${minutes}:${secs}`;
 }
-
-function coverFor(index: number): HTMLElement {
-  return el(`div.track__cover track__cover--${(index % 6) + 1}`, [
-    el('span.track__cover-note', index % 3 === 0 ? '♫' : '♪')
-  ]) as HTMLElement;
+function coverFor(
+  index: number,
+  track: Track
+): HTMLElement {
+  const coverNumber = (index % 6) + 1;
+  return el(
+    'div.track__cover',
+    [
+      el('img', {
+        src: `/covers/track${coverNumber}.svg`,
+        alt: track.album || track.title || 'Обложка альбома',
+      }),
+    ]
+  ) as HTMLElement;
 }
-
 export class TrackCard {
   public readonly el: HTMLElement;
-
+  private readonly favoriteButton: HTMLButtonElement;
   constructor(
     track: Track,
     index: number,
@@ -24,11 +40,17 @@ export class TrackCard {
     onPlay: () => void,
     onFavorite: () => void
   ) {
-    const favorite = el(
-      `button.track__favorite${isFavorite ? '.track__favorite--active' : ''}`,
+    this.favoriteButton = el(
+      `button.track__favorite${
+        isFavorite
+          ? '.track__favorite--active'
+          : ''
+      }`,
       {
         type: 'button',
-        'aria-label': isFavorite ? 'Убрать из избранного' : 'Добавить в избранное',
+        'aria-label': isFavorite
+          ? 'Убрать из избранного'
+          : 'Добавить в избранное',
         onclick: (event: Event) => {
           event.stopPropagation();
           onFavorite();

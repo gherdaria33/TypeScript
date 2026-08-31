@@ -10,8 +10,8 @@ export class Header {
 
     const searchInput = el('input.header__search-input', {
       type: 'search',
-      placeholder: 'Поиск аудиофайлов',
-      'aria-label': 'Поиск аудиофайлов',
+      placeholder: 'ЧТО БУДЕМ ИСКАТЬ?',
+      'aria-label': 'ЧТО БУДЕМ ИСКАТЬ',
       oninput: (event: Event) => {
         const target = event.currentTarget as HTMLInputElement;
         window.dispatchEvent(new CustomEvent<string>('audio-search', { detail: target.value }));
@@ -28,9 +28,13 @@ export class Header {
       'aria-label': 'Открыть профиль',
       onclick: onProfile
     }, [
-      el('span.header__avatar', initial),
+      el('img.header__avatar', {
+        src: '/covers/avatar.svg',
+        alt: 'Аватар',
+      }),
+
       el('span.header__username', user?.username ?? 'username'),
-      el('span.header__chevron', '⌄')
+      el('span.header__chevron', '>')
     ]) as HTMLButtonElement;
 
     this.el = el('header.header', [

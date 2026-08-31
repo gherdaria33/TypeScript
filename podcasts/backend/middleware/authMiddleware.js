@@ -1,19 +1,67 @@
-const jwt = require("jsonwebtoken");
-const secretKey = "your_secret_key";
+const jwt = require('jsonwebtoken');
 
-const authenticate = (req, res, next) => {
-  const token = req.headers.authorization?.split(" ")[1];
+const { JWT_SECRET } = require('../config/auth');
 
-  if (!token) {
-    return res.status(403).json({ message: "доступ запрещен" });
+const authenticate = (
+  req,
+  res,
+  next
+) => {
+  const authHeader =
+    req.headers.authorization;
+
+  console.log(
+    'AUTH HEADER:',
+    authHeader
+  );
+
+  if (!authHeader) {
+    return res.status(401).json({
+      message: 'Токен отсутствует',
+    });
   }
 
+  const parts =
+    authHeader.split(' ');
+
+  if (
+    parts.length !== 2 ||
+    parts[0] !== 'Bearer' ||
+    !parts[1]
+  ) {
+    return res.status(401).json({
+      message:
+        'Неверный формат токена',
+    });
+  }
+
+  const token = parts[1];
+
   try {
-    const decoded = jwt.verify(token, secretKey);
+    const decoded =
+      jwt.verify(
+        token,
+        JWT_SECRET
+      );
+
+    console.log(
+      'DECODED TOKEN:',
+      decoded
+    );
+
     req.user = decoded;
+
     next();
   } catch (error) {
-    return res.status(400).json({ message: "токен некорректный" });
+    console.error(
+      'JWT ERROR:',
+      error.message
+    );
+
+    return res.status(401).json({
+      message:
+        'Токен недействителен. Войдите заново.',
+    });
   }
 };
 
