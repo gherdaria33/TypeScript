@@ -1,0 +1,105 @@
+:root {
+  --accent: #f2764b;
+  --accent-dark: #ea6540;
+  --ink: #25344d;
+  --muted: #a8a8a8;
+  --line: #ededed;
+  --surface: #fff;
+  --canvas: #f3f3f3;
+}
+
+.app { min-height: 100vh; background: var(--surface); padding-bottom: 100px; }
+
+.sidebar {
+  position: fixed; z-index: 40; left: 0; top: 0; bottom: 100px; width: 290px;
+  padding: 30px 24px; background: #fff; border-right: 1px solid var(--line);
+}
+.sidebar__brand { display:flex; align-items:center; gap:9px; padding: 0 18px 38px; color:#171717; font-size:17px; }
+.sidebar__brand-mark { color:var(--accent); font-size:29px; font-weight:900; transform:rotate(-8deg); }
+.sidebar__brand-text { font-weight:800; letter-spacing:-.04em; }
+.sidebar__nav { display:grid; gap:8px; }
+.sidebar__item { width:100%; min-height:44px; display:flex; align-items:center; gap:12px; padding:9px 18px; border:0; background:transparent; color:#999; border-radius:0; text-align:left; font-size:13px; }
+.sidebar__item:hover { color:var(--accent); background:#fff8f5; }
+.sidebar__item--active { color:#8d8d8d; }
+.sidebar__icon { width:20px; color:var(--accent); font-size:20px; }
+.sidebar__profile-link { display:none; }
+.sidebar__overlay { display:none; }
+
+.header {
+  position:fixed; z-index:30; top:0; right:0; left:290px; height:82px;
+  display:grid; grid-template-columns:minmax(360px,798px) 246px; justify-content:center; align-items:center;
+  gap:16px; padding:0 24px; background:#fff;
+}
+.header__search { height:53px; display:flex; align-items:center; gap:10px; padding:0 14px; border:1px solid #e6e6e6; border-radius:4px; background:#fff; }
+.header__search-icon { color:#bdbdbd; font-size:23px; }
+.header__search-input { width:100%; height:100%; border:0; outline:0; background:transparent; color:#555; font-size:12px; }
+.header__search-input::placeholder { color:#b6b6b6; }
+.header__actions { height:53px; }
+.header__profile { width:100%; height:53px; display:flex; align-items:center; gap:10px; padding:0 13px; border:1px solid #e6e6e6; border-radius:4px; background:#fff; color:#444; }
+.header__avatar { width:28px; height:28px; flex:0 0 28px; display:grid; place-items:center; border-radius:50%; background:#ddd; color:#555; font-size:11px; }
+.header__username { flex:1; text-align:left; font-size:12px; }
+.header__chevron { color:var(--accent); font-size:20px; }
+.mobile-topbar, .mobile-app-head { display:none; }
+
+.page { margin-left:290px; padding:108px 28px 34px; min-height:calc(100vh - 100px); }
+.page__heading { margin:0 0 17px; }
+.page__title { margin:0; color:var(--ink); font-size:25px; font-weight:500; letter-spacing:-.03em; }
+.page__status { color:#aaa; font-size:11px; margin:-10px 0 13px; }
+.page__eyebrow, .page__subtitle, .mobile-tabs { display:none; }
+.profile-card { max-width:650px; margin-top:20px; padding:28px; border:1px solid var(--line); border-radius:6px; display:flex; gap:20px; align-items:center; }
+.profile-card__avatar { width:88px; height:88px; border-radius:50%; display:grid; place-items:center; background:#eee; color:#777; font-size:28px; }
+.profile-card__label { color:#aaa; font-size:11px; }
+.profile-card__name { margin-top:5px; color:#555; font-size:22px; font-weight:600; }
+.profile-card__hint { margin-top:7px; color:#aaa; font-size:12px; }
+
+@media (max-width:900px) {
+  .sidebar { width:220px; }
+  .header { left:220px; grid-template-columns:minmax(280px,1fr) 190px; }
+  .page { margin-left:220px; }
+}
+
+@media (max-width:700px) {
+  body { background:var(--canvas); }
+  .app { min-height:100vh; padding:0 0 180px; background:var(--canvas); }
+  .header { position:static; left:auto; right:auto; top:auto; height:auto; display:block; padding:0; background:transparent; }
+  .mobile-topbar { height:63px; display:flex; align-items:center; justify-content:center; position:relative; background:#292929; color:#fff; }
+  .mobile-topbar__title { font-size:24px; font-weight:400; letter-spacing:-.03em; }
+  .mobile-topbar__menu { position:absolute; left:31px; top:50%; width:28px; height:28px; transform:translateY(-50%); border:0; background:transparent; padding:2px 0; display:grid; align-content:center; gap:5px; }
+  .mobile-topbar__menu span { width:27px; height:2px; display:block; background:#fff; border-radius:2px; }
+  .mobile-app-head { width:min(100%,492px); height:83px; margin:0 auto; padding:0 20px; display:flex; align-items:center; justify-content:space-between; background:#fff; }
+  .mobile-app-head__brand { display:flex; align-items:center; gap:9px; color:#171717; font-size:17px; letter-spacing:-.04em; }
+  .mobile-app-head__mark { color:var(--accent); font-size:29px; font-weight:900; transform:rotate(-8deg); }
+  .mobile-app-head__profile { border:0; background:transparent; display:flex; align-items:center; gap:8px; color:#333; padding:0; }
+  .mobile-app-head .header__username { flex:0 0 auto; font-size:12px; }
+  .header__search, .header__actions { display:none; }
+
+  .sidebar { position:fixed; z-index:100; left:-290px; top:0; bottom:0; width:290px; padding:30px 24px; transition:left .2s ease; box-shadow:8px 0 24px rgba(0,0,0,.12); }
+  .sidebar--open { left:0; }
+  .sidebar__overlay { display:block; position:fixed; left:290px; top:0; width:100vw; height:100vh; border:0; background:rgba(0,0,0,.28); visibility:hidden; opacity:0; }
+  .sidebar--open .sidebar__overlay { visibility:visible; opacity:1; }
+
+  .page { width:min(100%,492px); margin:0 auto; padding:0 0 24px; min-height:0; background:#f4f4f4; }
+  .page__heading { margin:0; padding:0 20px; }
+  .page__title { display:none; }
+  .page__status { display:none; }
+  .mobile-tabs { height:90px; display:flex; align-items:center; gap:23px; padding:0 20px; background:#f4f4f4; }
+  .mobile-tabs__item { height:60px; padding:0 22px; border:0; border-radius:31px; background:#fff; color:var(--ink); font-size:18px; white-space:nowrap; }
+  .mobile-tabs__item--active { display:flex; align-items:center; gap:12px; background:var(--accent); color:#fff; }
+  .mobile-tabs__item span { font-size:25px; line-height:1; }
+
+  .tracks-head { display:none; }
+  .tracks-list { padding:0 20px; display:grid; gap:14px; }
+  .track { min-height:96px; display:grid; grid-template-columns:96px minmax(0,1fr) 42px 28px; gap:14px; padding:0; border:0; background:#fff; align-items:center; }
+  .track:hover { background:#fff; }
+  .track__number, .track__album, .track__date, .track__duration { display:none; }
+  .track__cover { width:96px; height:96px; border-radius:0; overflow:hidden; }
+  .track__cover-image { width:100%; height:100%; display:block; object-fit:cover; }
+  .track__main { padding:0; min-width:0; }
+  .track__title { color:var(--ink); font-size:19px; font-weight:400; line-height:1.15; }
+  .track__artist { margin-top:6px; color:#aaa; font-size:15px; line-height:1.15; }
+  .track__favorite { color:var(--accent); font-size:31px; padding:0; }
+  .track__menu { color:#c5c5c5; font-size:15px; padding:0; letter-spacing:2px; }
+  .pagination { display:none; }
+
+  .profile-card { margin:20px; padding:22px; background:#fff; }
+}

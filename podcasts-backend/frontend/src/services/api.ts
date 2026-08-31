@@ -1,0 +1,62 @@
+const API_BASE = '/api';
+
+function clearAuthAndNotify(): void {
+  localStorage.removeItem('audio_player_token');
+  localStorage.removeItem('audio_player_user');
+  window.dispatchEvent(new Event('auth-expired'));
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  token?: string
+): Promise<T> {
+  const headers = new Headers(options.headers);
+  headers.set('Content-Type', 'application/json');
+
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers
+  });
+
+  const text = await response.text();
+  let data: unknown = null;
+
+  if (text) {
+    try {
+      data = JSON.parse(text) as unknown;
+    } catch {
+      data = { message: text };
+    }
+  }
+
+  const message =
+    typeof data === 'object' &&
+    data !== null &&
+    'message' in data &&
+    typeof data.message === 'string'
+      ? data.message
+      : `Ошибка HTTP ${response.status}`;
+
+  if (!response.ok) {
+    if (token && (response.status === 401 || response.status === 403 || message.includes('токен'))) {
+      clearAuthAndNotify();
+    }
+    throw new Error(message);
+  }
+
+  return data as T;
+}
+
+export const api = {
+  get: <T>(path: string, token?: string) =>
+    request<T>(path, { method: 'GET' }, token),
+
+  post: <T>(path: string, body: unknown, token?: string) =>
+    request<T>(path, { method: 'POST', body: JSON.stringify(body) }, token),
+
+  delete: <T>(path: string, body: unknown, token?: string) =>
+    request<T>(path, { method: 'DELETE', body: JSON.stringify(body) }, token)
+};
