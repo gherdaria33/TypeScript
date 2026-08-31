@@ -20,7 +20,10 @@ const User = {
   },
 
   removeFavorite: (username, trackId) => {
+    if (!favorites[username]) return;
+
     const index = favorites[username].indexOf(trackId);
+
     if (index > -1) {
       favorites[username].splice(index, 1);
     }
