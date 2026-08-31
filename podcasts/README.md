@@ -1,26 +1,41 @@
-# FINAL AUTH FIX
+# Audio Player — финальная версия
 
-Backend: `http://localhost:8000`
-Frontend: `http://localhost:5173`
+Проект состоит из двух частей:
 
-## Backend
+- `express-backend` — Express API с JWT, избранным и реальными тестовыми WAV-аудиоданными;
+- `frontend` — TypeScript + Vite + Redom, сверстанный в стиле предоставленного макета: левый sidebar, верхняя панель пользователя, список композиций, избранное, профиль и фиксированный нижний плеер.
+
+## Запуск backend
+
 ```bash
 cd express-backend
 npm install
 npm start
 ```
-Check: `http://localhost:8000/api/health` -> `{"ok":true}`
 
-## Frontend
+Backend: http://localhost:8000
+
+## Запуск frontend
+
+Во втором терминале:
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-## Test account
-Login: `demo`
-Password: `demo1234`
+Открыть адрес, который покажет Vite, обычно `http://localhost:5173/`.
 
-Frontend now calls `http://localhost:8000/api` directly, so it does not depend on Vite proxy configuration. Backend has CORS enabled.
-After successful login Local Storage receives `audio_player_token` and `audio_player_user`.
+## Проверка
+
+```bash
+npm run typecheck
+npm run build
+```
+
+Frontend использует Vite proxy `/api -> http://localhost:8000`, поэтому браузеру не требуется отдельная CORS-настройка.
+
+## Функциональность
+
+Авторизация, регистрация, список треков, поиск, пагинация, избранное, профиль, play/pause, previous/next, ±10 секунд, перемотка по шкале и управление клавиатурой.

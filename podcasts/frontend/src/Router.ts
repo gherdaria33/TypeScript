@@ -15,10 +15,11 @@ export class Router {
   constructor(root: HTMLElement) {
     this.root = root;
     window.addEventListener('popstate', () => this.render());
-    window.addEventListener('auth-expired', () => this.render());
   }
 
-  start(): void { this.render(); }
+  start(): void {
+    this.render();
+  }
 
   private getRoute(): Route {
     if (window.location.pathname === '/favorites') return 'favorites';
@@ -36,7 +37,9 @@ export class Router {
 
   navigate(route: Route): void {
     const path = route === 'tracks' ? '/' : `/${route}`;
-    if (window.location.pathname !== path) window.history.pushState({}, '', path);
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
     this.render();
   }
 
@@ -48,7 +51,14 @@ export class Router {
   }
 
   private showApp(route: Route): void {
+    const page = route === 'favorites'
+      ? new FavouritePage()
+      : route === 'profile'
+        ? new ProfilePage()
+        : new MainPage();
+
     const header = new Header(() => this.navigate('profile'));
+
     const sidebar = new Sidebar(
       route,
       () => this.navigate('tracks'),
@@ -56,15 +66,15 @@ export class Router {
       () => this.navigate('profile')
     );
 
-    const page = route === 'favorites'
-      ? new FavouritePage(() => this.navigate('tracks'))
-      : route === 'profile'
-        ? new ProfilePage()
-        : new MainPage(() => this.navigate('favorites'));
-
     const layout = document.createElement('div');
     layout.className = 'app';
-    layout.append(header.el, sidebar.el, page.el, new Player().el);
+    layout.append(header.el, sidebar.el, page.el);
+
+    const playerMount = document.createElement('div');
+    playerMount.className = 'player-mount';
+    playerMount.append(new Player().el);
+    layout.append(playerMount);
+
     this.root.replaceChildren(layout);
   }
 }

@@ -11,9 +11,9 @@ export class MainPage {
   private favorites = new Set<number>();
   private page = 1;
   private readonly perPage = 8;
-  private readonly list: HTMLElement;
-  private readonly pagination: HTMLElement;
-  private readonly status: HTMLElement;
+  private list: HTMLElement;
+  private pagination: HTMLElement;
+  private status: HTMLElement;
   private search = '';
   private readonly onSearch = (event: Event): void => {
     const custom = event as CustomEvent<string>;
@@ -22,19 +22,13 @@ export class MainPage {
     this.renderList();
   };
 
-  constructor(onFavorites: () => void = () => window.history.pushState({}, '', '/favorites')) {
+  constructor() {
     this.list = el('div.tracks-list') as HTMLElement;
     this.pagination = el('div.pagination') as HTMLElement;
     this.status = el('div.page__status') as HTMLElement;
 
     this.el = el('main.page', [
-      el('div.page__heading', [
-        el('h1.page__title', 'Аудиофайлы и треки'),
-        el('nav.mobile-tabs', [
-          el('button.mobile-tabs__item.mobile-tabs__item--active', { type: 'button' }, [el('span', '▷'), 'Аудиокомпозиции']),
-          el('button.mobile-tabs__item', { type: 'button', onclick: onFavorites }, 'Избранное')
-        ])
-      ]),
+      el('div.page__heading', [el('h1.page__title', 'Аудиофайлы и треки')]),
       this.status,
       el('div.tracks-head', [
         el('span', '#'), el('span', ''), el('span', 'Название'), el('span', 'Альбом'),
@@ -49,26 +43,17 @@ export class MainPage {
   }
 
   private async load(): Promise<void> {
-    this.status.textContent = 'Загрузка...';
-
     try {
-      // Tracks are public. Do not let a stale/invalid favorites token hide them.
-      const tracks = await trackService.getTracks();
+      this.status.textContent = 'Загрузка...';
+      const [tracks, favorites] = await Promise.all([
+        trackService.getTracks(),
+        favoriteService.getFavorites()
+      ]);
       this.tracks = tracks;
+      this.favorites = new Set(favorites.map(track => track.id));
       playerService.setTracks(tracks);
-      this.favorites.clear();
       this.status.textContent = `${tracks.length} аудиофайлов`;
       this.renderList();
-
-      try {
-        const favorites = await favoriteService.getFavorites();
-        this.favorites = new Set(favorites.map(track => track.id));
-        this.renderList();
-      } catch (error) {
-        // Tracks remain visible even when the favorites session is invalid.
-        // The user can log in again from the profile/logout flow without losing the catalog.
-        this.status.textContent = `${tracks.length} аудиофайлов`;
-      }
     } catch (error) {
       this.status.textContent = error instanceof Error ? error.message : 'Не удалось загрузить треки';
     }

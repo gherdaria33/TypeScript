@@ -11,6 +11,7 @@ class PlayerService {
 
   constructor() {
     this.audio.preload = 'metadata';
+
     this.audio.addEventListener('play', () => this.notify());
     this.audio.addEventListener('pause', () => this.notify());
     this.audio.addEventListener('ended', () => this.next());
@@ -18,14 +19,6 @@ class PlayerService {
 
   setTracks(tracks: Track[]): void {
     this.tracks = tracks;
-    if (this.currentIndex >= tracks.length) {
-      this.currentIndex = -1;
-      this.audio.pause();
-      this.audio.removeAttribute('src');
-      this.audio.load();
-      this.currentSource = '';
-    }
-    this.notify();
   }
 
   getCurrent(): Track | null {
@@ -44,16 +37,17 @@ class PlayerService {
 
   async play(track: Track): Promise<void> {
     const index = this.tracks.findIndex(item => item.id === track.id);
-    if (index < 0) {
-      throw new Error('Трек отсутствует в текущем списке воспроизведения.');
+
+    if (index >= 0) {
+      this.currentIndex = index;
     }
 
-    this.currentIndex = index;
     const source = this.decodeAudio(track.encoded_audio);
 
     if (!source) {
-      this.audio.pause();
-      throw new Error('У этого трека отсутствует корректный аудиопоток.');
+      throw new Error(
+        'В backend у этого трека нет пригодного аудиопотока. Поле encoded_audio содержит демонстрационные данные.'
+      );
     }
 
     if (this.currentSource !== source) {
@@ -71,24 +65,10 @@ class PlayerService {
   }
 
   async toggle(track?: Track): Promise<void> {
-    if (track) {
-      if (this.getCurrent()?.id !== track.id) {
-        await this.play(track);
-        return;
-      }
-      if (this.audio.paused) {
-        if (!this.audio.src) {
-          await this.play(track);
-          return;
-        }
-        await this.audio.play();
-      } else {
-        this.audio.pause();
-      }
+    if (track && this.getCurrent()?.id !== track.id) {
+      await this.play(track);
       return;
     }
-
-    if (!this.getCurrent()) return;
 
     if (this.audio.paused) {
       await this.audio.play();
@@ -99,6 +79,7 @@ class PlayerService {
 
   seek(seconds: number): void {
     if (!Number.isFinite(this.audio.duration)) return;
+
     this.audio.currentTime = Math.max(
       0,
       Math.min(this.audio.duration, this.audio.currentTime + seconds)
@@ -107,28 +88,39 @@ class PlayerService {
 
   seekTo(percent: number): void {
     if (!Number.isFinite(this.audio.duration)) return;
-    const safePercent = Math.max(0, Math.min(1, percent));
-    this.audio.currentTime = this.audio.duration * safePercent;
+    this.audio.currentTime = this.audio.duration * percent;
   }
 
   next(): void {
     if (!this.tracks.length) return;
+
     this.currentIndex = (this.currentIndex + 1) % this.tracks.length;
     const track = this.getCurrent();
-    if (track) void this.play(track).catch(console.error);
+
+    if (track) {
+      void this.play(track).catch(error => {
+        console.error(error);
+      });
+    }
   }
 
   previous(): void {
     if (!this.tracks.length) return;
+
     this.currentIndex =
       (this.currentIndex - 1 + this.tracks.length) % this.tracks.length;
+
     const track = this.getCurrent();
-    if (track) void this.play(track).catch(console.error);
+
+    if (track) {
+      void this.play(track).catch(error => {
+        console.error(error);
+      });
+    }
   }
 
   subscribe(listener: PlayerListener): () => void {
     this.listeners.add(listener);
-    listener(this.getCurrent(), this.isPlaying());
     return () => this.listeners.delete(listener);
   }
 
@@ -140,15 +132,27 @@ class PlayerService {
 
   private decodeAudio(value?: string): string | null {
     if (!value) return null;
-    if (value.startsWith('data:audio/')) return value;
 
+    // Supports a backend value already formatted as a data URL.
+    if (value.startsWith('data:audio/')) {
+      return value;
+    }
+
+    // The supplied backend contains Base64 strings. If those strings
+    // decode to an audio data URL, use it.
     try {
       const decoded = atob(value);
-      if (decoded.startsWith('data:audio/')) return decoded;
+
+      if (decoded.startsWith('data:audio/')) {
+        return decoded;
+      }
     } catch {
       return null;
     }
 
+    // The uploaded backend's demo values decode to ordinary text such as
+    // "Audio data for Eternal Sunset..." rather than actual audio bytes.
+    // Do not pretend such data is playable.
     return null;
   }
 }
