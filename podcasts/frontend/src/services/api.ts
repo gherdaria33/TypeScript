@@ -6,18 +6,16 @@ async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const headers = new Headers(options.headers);
+  const headers = new Headers(
+    options.headers
+  );
 
-  // Content-Type нужен только когда отправляем body
-  if (options.body !== undefined) {
-    headers.set(
-      'Content-Type',
-      'application/json'
-    );
-  }
+  headers.set(
+    'Content-Type',
+    'application/json'
+  );
 
-  // Всегда берём самый свежий токен
-  // непосредственно перед запросом.
+  // Берём актуальный JWT автоматически
   const token =
     localStorage.getItem(TOKEN_KEY);
 
@@ -36,7 +34,8 @@ async function request<T>(
     }
   );
 
-  const text = await response.text();
+  const text =
+    await response.text();
 
   let data: unknown = null;
 
@@ -49,10 +48,6 @@ async function request<T>(
       };
     }
   }
-
-  // ============================================
-  // ОШИБКА
-  // ============================================
 
   if (!response.ok) {
     let message =
@@ -67,14 +62,8 @@ async function request<T>(
       message = data.message;
     }
 
-    // JWT недействителен
+    // JWT больше не действителен
     if (response.status === 401) {
-      console.error(
-        '401 Unauthorized:',
-        message
-      );
-
-      // Удаляем только недействительный JWT
       localStorage.removeItem(
         TOKEN_KEY
       );
@@ -90,16 +79,7 @@ async function request<T>(
   return data as T;
 }
 
-// ============================================
-// API
-// ============================================
-
 export const api = {
-
-  // ==========================================
-  // GET
-  // ==========================================
-
   get<T>(
     path: string
   ): Promise<T> {
@@ -111,31 +91,18 @@ export const api = {
     );
   },
 
-  // ==========================================
-  // POST
-  // ==========================================
-
   post<T>(
     path: string,
-    body?: unknown
+    body: unknown
   ): Promise<T> {
     return request<T>(
       path,
       {
         method: 'POST',
-
-        ...(body !== undefined
-          ? {
-              body: JSON.stringify(body),
-            }
-          : {}),
+        body: JSON.stringify(body),
       }
     );
   },
-
-  // ==========================================
-  // DELETE
-  // ==========================================
 
   delete<T>(
     path: string,
@@ -145,7 +112,6 @@ export const api = {
       path,
       {
         method: 'DELETE',
-
         ...(body !== undefined
           ? {
               body: JSON.stringify(body),
