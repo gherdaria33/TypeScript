@@ -15,6 +15,7 @@ export class Router {
   constructor(root: HTMLElement) {
     this.root = root;
     window.addEventListener('popstate', () => this.render());
+    window.addEventListener('auth-expired', () => this.render());
   }
 
   start(): void { this.render(); }
