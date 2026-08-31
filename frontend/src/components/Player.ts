@@ -17,9 +17,11 @@ export class Player {
   private currentTime: HTMLElement;
   private duration: HTMLElement;
   private range: HTMLInputElement;
+  private cover: HTMLElement;
 
   constructor() {
     this.title = el('div.player__title', 'Выберите композицию');
+    this.cover = el('div.player__cover', '♫');
     this.artist = el('div.player__artist', '—');
     this.playButton = el('button.player__button.player__button--play', {
       type: 'button',
@@ -77,13 +79,15 @@ export class Player {
       if (track) {
         this.title.textContent = track.title || 'Без названия';
         this.artist.textContent = track.artist || 'Неизвестный исполнитель';
+        const image = el('img.player__cover-image', { src: `/covers/cover-${Math.min(8, Math.max(1, track.id))}.jpg`, alt: '' }) as HTMLImageElement;
+        this.cover.replaceChildren(image);
       }
       this.playButton.textContent = playing ? 'Ⅱ' : '▶';
     });
 
     this.el = el('footer.player', [
       el('div.player__info', [
-        el('div.player__cover', '♫'),
+        this.cover,
         el('div', [this.title, this.artist])
       ]),
       el('div.player__controls', [

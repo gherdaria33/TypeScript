@@ -22,13 +22,19 @@ export class MainPage {
     this.renderList();
   };
 
-  constructor() {
+  constructor(onFavorites: () => void = () => window.history.pushState({}, '', '/favorites')) {
     this.list = el('div.tracks-list') as HTMLElement;
     this.pagination = el('div.pagination') as HTMLElement;
     this.status = el('div.page__status') as HTMLElement;
 
     this.el = el('main.page', [
-      el('div.page__heading', [el('h1.page__title', 'Аудиофайлы и треки')]),
+      el('div.page__heading', [
+        el('h1.page__title', 'Аудиофайлы и треки'),
+        el('nav.mobile-tabs', [
+          el('button.mobile-tabs__item.mobile-tabs__item--active', { type: 'button' }, [el('span', '▷'), 'Аудиокомпозиции']),
+          el('button.mobile-tabs__item', { type: 'button', onclick: onFavorites }, 'Избранное')
+        ])
+      ]),
       this.status,
       el('div.tracks-head', [
         el('span', '#'), el('span', ''), el('span', 'Название'), el('span', 'Альбом'),

@@ -10,7 +10,7 @@ export class FavouritePage {
   private status: HTMLElement;
   private tracks: Track[] = [];
 
-  constructor() {
+  constructor(onTracks: () => void = () => window.history.pushState({}, '', '/')) {
     this.list = el('div.tracks-list') as HTMLElement;
     this.status = el('div.page__status') as HTMLElement;
 
@@ -19,6 +19,10 @@ export class FavouritePage {
         el('div', [
           el('div.page__eyebrow', 'Ваша коллекция'),
           el('h1.page__title', 'Избранное'),
+          el('nav.mobile-tabs', [
+            el('button.mobile-tabs__item', { type: 'button', onclick: onTracks }, [el('span', '▷'), 'Аудиокомпозиции']),
+            el('button.mobile-tabs__item.mobile-tabs__item--active', { type: 'button' }, 'Избранное')
+          ]),
           el('p.page__subtitle', 'Треки, которые вы сохранили для быстрого доступа.')
         ])
       ]),
