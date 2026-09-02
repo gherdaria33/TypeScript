@@ -1,0 +1,27 @@
+# Dependencies
+backend/node_modules/
+frontend/node_modules/
+
+# Cache
+.cache/
+.vite/
+backend/.cache/
+frontend/.vite/
+*.cache
+
+# TypeScript
+*.tsbuildinfo
+
+# Build
+backend/dist/
+frontend/dist/
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.production.local
+
+# Logs
+*.log
+npm-debug.log*

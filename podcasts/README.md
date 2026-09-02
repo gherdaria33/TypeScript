@@ -8,7 +8,7 @@
 ## Запуск backend
 
 ```bash
-cd express-backend
+cd backend
 npm install
 npm start
 ```
